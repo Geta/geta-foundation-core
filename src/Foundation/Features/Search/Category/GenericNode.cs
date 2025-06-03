@@ -1,11 +1,13 @@
 using EPiServer.Commerce.Catalog.DataAnnotations;
 using EPiServer.SpecializedProperties;
 using Foundation.Features.CatalogContent;
+using Geta.EPi.Commerce.UI.Facets.Cms.Properties;
+using Geta.EPi.Commerce.UI.Facets.Models.EditorModels;
 
 namespace Foundation.Features.Search.Category
 {
     [CatalogContentType(DisplayName = "Generic Node", GUID = "4ac27ad4-bf60-4ea0-9a77-28a89d38d3fd", Description = "")]
-    public class GenericNode : NodeContent, IProductRecommendations, IFoundationContent/*, IDashboardItem*/
+    public class GenericNode : NodeContent, IProductRecommendations, IFoundationContent/*, IDashboardItem*/, IFacetContainer
     {
         [CultureSpecific]
         [Display(Name = "Long name", GroupName = SystemTabNames.Content, Order = 5)]
@@ -22,6 +24,12 @@ namespace Foundation.Features.Search.Category
         [IncludeInDefaultSearch]
         [Display(Name = "Description", GroupName = SystemTabNames.Content, Order = 15)]
         public virtual XhtmlString Description { get; set; }
+
+        [CultureSpecific]
+        [Display(Order = 200)]
+        [BackingType(typeof(PropertyFacetCollection))]
+        public virtual FacetCollection FacetFilters { get; set; }
+
 
         [CultureSpecific]
         [Display(

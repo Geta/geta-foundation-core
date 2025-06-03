@@ -1,4 +1,5 @@
 ﻿using Foundation.Infrastructure.Find.Facets;
+using Geta.EPi.Commerce.UI.Facets.Models;
 
 namespace Foundation.Features.Search.Category
 {
@@ -25,7 +26,7 @@ namespace Foundation.Features.Search.Category
         {
             return _viewModelFactory.Create(currentContent, _httpContextAccessor.HttpContext.Request.Query["facets"].ToString(), 0, new FilterOptionViewModel
             {
-                FacetGroups = new List<FacetGroupOption>(),
+                FacetGroups = new List<FacetOptionGroup>(),
                 Page = 1,
                 PageSize = currentContent.PartialPageSize
             });

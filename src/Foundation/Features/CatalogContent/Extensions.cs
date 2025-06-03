@@ -43,7 +43,8 @@ namespace Foundation.Features.CatalogContent
         private static readonly Lazy<IPromotionService> PromotionService =
             new Lazy<IPromotionService>(() => ServiceLocator.Current.GetInstance<IPromotionService>());
 
-        public static ProductTileViewModel GetProductTileViewModel(this EntryContentBase entry, IMarket market, Currency currency, bool isFeaturedProduct = false)
+        public static ProductTileViewModel GetProductTileViewModel(this EntryContentBase entry, IMarket market,
+            Currency currency, bool isFeaturedProduct = false)
         {
             var entryRecommendations = entry as IProductRecommendations;
             var product = entry;
@@ -51,9 +52,9 @@ namespace Foundation.Features.CatalogContent
             var firstCode = "";
             var type = typeof(GenericProduct);
 
-            if (entry is GenericProduct)
+            if (entry is GenericProduct genericProduct)
             {
-                var variants = GetProductVariants(entry);
+                var variants = GetProductVariants(genericProduct);
                 if (variants != null && variants.Any())
                 {
                     firstCode = variants.First().Code;
@@ -64,15 +65,15 @@ namespace Foundation.Features.CatalogContent
             if (entry is GenericBundle)
             {
                 type = typeof(GenericBundle);
-                firstCode = product.Code;
-                entryUrl = UrlResolver.Value.GetUrl(product.ContentLink);
+                firstCode = entry.Code;
+                entryUrl = UrlResolver.Value.GetUrl(entry.ContentLink);
             }
 
             if (entry is GenericPackage)
             {
                 type = typeof(GenericPackage);
-                firstCode = product.Code;
-                entryUrl = UrlResolver.Value.GetUrl(product.ContentLink);
+                firstCode = entry.Code;
+                entryUrl = UrlResolver.Value.GetUrl(entry.ContentLink);
             }
 
             if (entry is GenericVariant)
@@ -80,7 +81,7 @@ namespace Foundation.Features.CatalogContent
                 var variantEntry = entry as GenericVariant;
                 type = typeof(GenericVariant);
                 firstCode = entry.Code;
-                var parentLink = entry.GetParentProducts().FirstOrDefault();
+                var parentLink = variantEntry.GetParentProducts().FirstOrDefault();
                 if (ContentReference.IsNullOrEmpty(parentLink))
                 {
                     product = ContentLoader.Value.Get<EntryContentBase>(variantEntry.ContentLink);
@@ -128,6 +129,14 @@ namespace Foundation.Features.CatalogContent
                 Created = entry.Created,
                 IsFeaturedProduct = isFeaturedProduct
             };
+        }
+
+        public static ProductTileViewModel GetProductTileViewModel(this ISearchableProduct entry, IMarket market, Currency currency, bool isFeaturedProduct = false)
+        {
+            if (entry is EntryContentBase entryContentBase)
+                return GetProductTileViewModel(entryContentBase, market, currency, isFeaturedProduct);
+
+            return null;
         }
 
         private static IPriceValue GetEmptyPrice(EntryContentBase entry, IMarket market, Currency currency)

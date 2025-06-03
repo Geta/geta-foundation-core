@@ -7,7 +7,7 @@
 }
 
 <div class="selection-wrapper jsSearchFacets">
-    @if (Model.FacetGroups.Any(x => x.Facets.Any(y => y.Selected)))
+    @if (Model.FacetGroups.Any(x => x.Options.Any(y => y.Selected)))
     {
         <div class="selection--cm__label">
             @Html.TranslateFallback("/Category/Filters", "Filters")
@@ -17,9 +17,9 @@
                 @for (var i = 0; i < Model.FacetGroups.Count; i++)
                 {
                     var facetGroup = Model.FacetGroups[i];
-                    for (var j = 0; j < facetGroup.Facets.Count; j++)
+                    for (var j = 0; j < facetGroup.Options.Count; j++)
                     {
-                        var facet = facetGroup.Facets[j];
+                        var facet = facetGroup.Options[j];
                         if (!facet.Selected)
                         {
                             continue;
@@ -51,16 +51,16 @@
     {
         var facetGroup = Model.FacetGroups[i];
 
-        <ul class="selection--cm" data-facetkey="@facetGroup.GroupFieldName">
+        <ul class="selection--cm" data-facetkey="@facetGroup.Key">
             <li class="jsFirstLi">
-                <span class="jsFirstSpan selection--cm__sub-label">@facetGroup.GroupName</span>
-                @Html.TextBox(string.Format("FilterOption.FacetGroups[{0}].GroupFieldName", i), facetGroup.GroupFieldName, new { @hidden = "true" })
+                <span class="jsFirstSpan selection--cm__sub-label">@facetGroup.Name</span>
+                @Html.TextBox(string.Format("FilterOption.FacetGroups[{0}].GroupFieldName", i), facetGroup.Name, new { @hidden = "true" })
                 <i data-feather="plus" class="selection--cm__expand jsExpandCollapse pull-right"></i>
                 <i data-feather="minus" class="selection--cm__collapse jsExpandCollapse pull-right hidden"></i>
                 <ul class="selection--cm__dropdown hidden">
-                    @for (var j = 0; j < facetGroup.Facets.Count; j++)
+                    @for (var j = 0; j < facetGroup.Options.Count; j++)
                     {
-                        var facet = facetGroup.Facets[j];
+                        var facet = facetGroup.Options[j];
                         if (facet.Count != 0)
                         {
                             <li>

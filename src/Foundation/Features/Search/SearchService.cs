@@ -23,11 +23,17 @@ using Foundation.Features.Sales;
 using Foundation.Features.Search.Category;
 using Foundation.Infrastructure.Find;
 using Foundation.Infrastructure.Find.Facets;
+using Geta.EPi.Commerce.UI.Facets.Models;
+using Geta.EPi.Commerce.UI.Facets.Models.EditorModels;
+using Geta.EPi.Commerce.UI.Facets.Models.FormModels;
+using Geta.EPi.Commerce.UI.Facets.Services.Interfaces;
 using Geta.Optimizely.Categories;
 using Geta.Optimizely.Categories.Find.Extensions;
 using Mediachase.Commerce.Security;
 using Mediachase.Commerce.Website.Search;
+using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using static Foundation.Features.Shared.SelectionFactories.InclusionOrderingSelectionFactory;
+using FacetOption = Geta.EPi.Commerce.UI.Facets.Models.FacetOption;
 
 namespace Foundation.Features.Search
 {
@@ -65,6 +71,7 @@ namespace Foundation.Features.Search
         private readonly ICurrencyService _currencyservice;
         private readonly IContentLoader _contentLoader;
         private readonly IBestBetRepository _bestBetRepository;
+        private readonly ISearchFacetFilterService _searchFacetFilterService;
         private static readonly Random _random = new Random();
 
         public SearchService(ICurrentMarket currentMarket,
@@ -119,7 +126,7 @@ namespace Foundation.Features.Search
                 Q = query,
                 PageSize = 5,
                 Sort = string.Empty,
-                FacetGroups = new List<FacetGroupOption>(),
+                FacetGroups = new List<FacetOptionGroup>(),
                 Page = 1,
                 TrackData = false
             };
@@ -437,10 +444,10 @@ namespace Foundation.Features.Search
             }
         }
 
-        private ITypeSearch<EntryContentBase> BaseInlcusionExclusionQuery<T>(T currentContent, int page = 0, int pageSize = 12, int catalogId = 0) where T : BaseInclusionExclusionPage
+        private ITypeSearch<ISearchableProduct> BaseInlcusionExclusionQuery<T>(T currentContent, int page = 0, int pageSize = 12, int catalogId = 0) where T : BaseInclusionExclusionPage
         {
             var market = _currentMarket.GetCurrentMarket();
-            var query = _findClient.Search<EntryContentBase>();
+            var query = _findClient.Search<ISearchableProduct>();
             query = query.FilterMarket(market);
             query = query.Filter(x => x.Language.Name.Match(_contentLanguageAccessor.Language.Name));
             query = query.FilterForVisitor();
@@ -460,7 +467,7 @@ namespace Foundation.Features.Search
                 .Take(pageSize);
         }
 
-        private ITypeSearch<EntryContentBase> ApplyManualExclusion(ITypeSearch<EntryContentBase> query, IList<ContentReference> manualExclusion)
+        private ITypeSearch<ISearchableProduct> ApplyManualExclusion(ITypeSearch<ISearchableProduct> query, IList<ContentReference> manualExclusion)
         {
             foreach (var item in _contentLoader.GetItems(manualExclusion, _contentLanguageAccessor.Language))
             {
@@ -514,6 +521,13 @@ namespace Foundation.Features.Search
             IEnumerable<Filter> filters = null,
             int catalogId = 0)
         {
+            var optionModel = new FilterOptionModel
+            {
+                FacetAllTerms = false,
+                Facets = GetFacetGroups(currentContent, filterOptions.FacetGroups),
+                FacetSize = 100
+            };
+
             //If contact belong organization, only find product that belong the categories that has owner is this organization
             var contact = PrincipalInfo.CurrentPrincipal.GetCustomerContact();
             var organizationId = contact?.ContactOrganization?.PrimaryKeyId ?? Guid.Empty;
@@ -529,7 +543,7 @@ namespace Foundation.Features.Search
             var pageSize = filterOptions.PageSize > 0 ? filterOptions.PageSize : DefaultPageSize;
             var market = _currentMarket.GetCurrentMarket();
 
-            var query = _findClient.Search<EntryContentBase>();
+            var query = _findClient.Search<ISearchableProduct>();
             query = ApplyTermFilter(query, filterOptions.Q, filterOptions.TrackData);
             query = query.Filter(x => x.Language.Name.Match(_contentLanguageAccessor.Language.Name));
 
@@ -548,8 +562,8 @@ namespace Foundation.Features.Search
             query = query.FilterMarket(market);
             var facetQuery = query;
 
-            query = FilterSelected(query, filterOptions.FacetGroups);
-            query = ApplyFilters(query, filters);
+            query = _searchFacetFilterService.AppendFacetsAndFilters(query, optionModel, typeof(ISearchableProduct));
+
             if ((filterOptions.Sort == "Position" || filterOptions.Sort == "Recommended")
                     && filterOptions.SortDirection == "Asc")
             {
@@ -583,14 +597,14 @@ namespace Foundation.Features.Search
             return new ProductSearchResults
             {
                 ProductViewModels = CreateProductViewModels(result, currentContent, filterOptions.Q),
-                FacetGroups = GetFacetResults(filterOptions.FacetGroups, facetQuery, selectedfacets),
+                FacetGroups = _searchFacetFilterService.ExtractFacets<ISearchableProduct>(result, optionModel),
                 TotalCount = result.TotalMatching,
                 DidYouMeans = string.IsNullOrEmpty(filterOptions.Q) ? null : result.TotalMatching != 0 ? null : _findClient.Statistics().GetDidYouMean(filterOptions.Q),
                 Query = filterOptions.Q,
             };
         }
 
-        public IEnumerable<ProductTileViewModel> CreateProductViewModels(IContentResult<EntryContentBase> searchResult, IContent content, string searchQuery)
+        public IEnumerable<ProductTileViewModel> CreateProductViewModels(IContentResult<ISearchableProduct> searchResult, IContent content, string searchQuery)
         {
             List<ProductTileViewModel> productViewModels = null;
             var market = _currentMarket.GetCurrentMarket();
@@ -618,6 +632,23 @@ namespace Foundation.Features.Search
         }
 
         public virtual string GetOutline(string nodeCode) => GetOutlineForNode(nodeCode);
+
+        protected List<FacetOptionGroup> GetFacetGroups<TContent>(TContent content, IEnumerable<FacetOptionGroup> selectedFacets)
+        {
+            if (content is not GenericNode node)
+                return new List<FacetOptionGroup>();
+
+            return node.FacetFilters.Facets.Select(x => GetFacetOption(selectedFacets, x)).ToList();
+        }
+
+        private FacetOptionGroup GetFacetOption(IEnumerable<FacetOptionGroup> selectedFacets, FacetDescriptor descriptor) => new FacetOptionGroup
+        {
+            Name = descriptor.Name,
+            FilterHits = descriptor.FilterHits,
+            Key = descriptor.Property,
+            DisplayType = descriptor.Type,
+            Options = selectedFacets?.FirstOrDefault(x => x.Key.Equals(descriptor.Property))?.Options ?? Enumerable.Empty<FacetOption>().ToList()
+        };
 
         private string GetOutlineForNode(string nodeCode)
         {
@@ -647,7 +678,7 @@ namespace Foundation.Features.Search
             return outline;
         }
 
-        private static ITypeSearch<EntryContentBase> ApplyTermFilter(ITypeSearch<EntryContentBase> query, string searchTerm, bool trackData)
+        private static ITypeSearch<ISearchableProduct> ApplyTermFilter(ITypeSearch<ISearchableProduct> query, string searchTerm, bool trackData)
         {
             if (string.IsNullOrEmpty(searchTerm))
             {
@@ -663,7 +694,7 @@ namespace Foundation.Features.Search
             return query;
         }
 
-        private ITypeSearch<EntryContentBase> OrderBy(ITypeSearch<EntryContentBase> query, FilterOptionViewModel commerceFilterOptionViewModel)
+        private ITypeSearch<ISearchableProduct> OrderBy(ITypeSearch<ISearchableProduct> query, FilterOptionViewModel commerceFilterOptionViewModel)
         {
             if (string.IsNullOrEmpty(commerceFilterOptionViewModel.Sort) || commerceFilterOptionViewModel.Sort.Equals("Position"))
             {
@@ -708,178 +739,6 @@ namespace Foundation.Features.Search
             return query;
         }
 
-        private IEnumerable<FacetGroupOption> GetFacetResults(List<FacetGroupOption> options,
-            ITypeSearch<EntryContentBase> query,
-            string selectedfacets)
-        {
-            if (options == null)
-            {
-                return Enumerable.Empty<FacetGroupOption>();
-            }
-
-            var facets = _facetRegistry.GetFacetDefinitions();
-            var facetGroups = facets.Select(x => new FacetGroupOption
-            {
-                GroupFieldName = x.FieldName,
-                GroupName = x.DisplayName,
-            }).ToList();
-
-            query = facets.Aggregate(query, (current, facet) => facet.Facet(current, GetSelectedFilter(options, facet.FieldName)));
-
-            var productFacetsResult = query.Take(0).GetContentResult();
-            if (productFacetsResult.Facets == null)
-            {
-                return facetGroups;
-            }
-
-            foreach (var facetGroup in facetGroups)
-            {
-                var filter = facets.FirstOrDefault(x => x.FieldName.Equals(facetGroup.GroupFieldName));
-                if (filter == null)
-                {
-                    continue;
-                }
-
-                var facet = productFacetsResult.Facets.FirstOrDefault(x => x.Name.Equals(facetGroup.GroupFieldName));
-                if (facet == null)
-                {
-                    continue;
-                }
-
-                filter.PopulateFacet(facetGroup, facet, selectedfacets);
-            }
-            return facetGroups;
-        }
-
-        private Filter GetSelectedFilter(List<FacetGroupOption> options, string currentField)
-        {
-            var filters = new List<Filter>();
-            var facets = _facetRegistry.GetFacetDefinitions();
-            foreach (var facetGroupOption in options)
-            {
-                if (facetGroupOption.GroupFieldName.Equals(currentField))
-                {
-                    continue;
-                }
-
-                var filter = facets.FirstOrDefault(x => x.FieldName.Equals(facetGroupOption.GroupFieldName));
-                if (filter == null)
-                {
-                    continue;
-                }
-
-                if (!facetGroupOption.Facets.Any(x => x.Selected))
-                {
-                    continue;
-                }
-
-                if (filter is FacetStringDefinition)
-                {
-                    filters.Add(new TermsFilter(_findClient.GetFullFieldName(facetGroupOption.GroupFieldName, typeof(string)),
-                        facetGroupOption.Facets.Where(x => x.Selected).Select(x => FieldFilterValue.Create(x.Name))));
-                }
-                else if (filter is FacetStringListDefinition)
-                {
-                    var termFilters = facetGroupOption.Facets.Where(x => x.Selected)
-                        .Select(s => new TermFilter(facetGroupOption.GroupFieldName, FieldFilterValue.Create(s.Name)))
-                        .Cast<Filter>()
-                        .ToList();
-
-                    filters.AddRange(termFilters);
-                }
-                else if (filter is FacetNumericRangeDefinition)
-                {
-                    var rangeFilters = filter as FacetNumericRangeDefinition;
-                    foreach (var selectedRange in facetGroupOption.Facets.Where(x => x.Selected))
-                    {
-                        var rangeFilter = rangeFilters.Range.FirstOrDefault(x => x.Id.Equals(selectedRange.Key.Split(':')[1]));
-                        if (rangeFilter == null)
-                        {
-                            continue;
-                        }
-                        filters.Add(RangeFilter.Create(_findClient.GetFullFieldName(facetGroupOption.GroupFieldName, typeof(double)),
-                            rangeFilter.From ?? 0,
-                            rangeFilter.To ?? double.MaxValue));
-                    }
-                }
-            }
-
-            if (!filters.Any())
-            {
-                return null;
-            }
-
-            if (filters.Count == 1)
-            {
-                return filters.FirstOrDefault();
-            }
-
-            var boolFilter = new BoolFilter();
-            foreach (var filter in filters)
-            {
-                boolFilter.Should.Add(filter);
-            }
-            return boolFilter;
-        }
-
-        private ITypeSearch<T> FilterSelected<T>(ITypeSearch<T> query, List<FacetGroupOption> options)
-        {
-            var facets = _facetRegistry.GetFacetDefinitions();
-
-            foreach (var facetGroupOption in options)
-            {
-                var filter = facets.FirstOrDefault(x => x.FieldName.Equals(facetGroupOption.GroupFieldName));
-                if (filter == null)
-                {
-                    continue;
-                }
-
-                if (facetGroupOption.Facets != null && !facetGroupOption.Facets.Any(x => x.Selected))
-                {
-                    continue;
-                }
-
-                if (filter is FacetStringDefinition)
-                {
-                    var stringFilter = filter as FacetStringDefinition;
-                    query = stringFilter.Filter(query, facetGroupOption.Facets
-                        .Where(x => x.Selected)
-                        .Select(x => x.Name).ToList());
-                }
-                else if (filter is FacetStringListDefinition)
-                {
-                    var stringListFilter = filter as FacetStringListDefinition;
-                    query = stringListFilter.Filter(query, facetGroupOption.Facets
-                        .Where(x => x.Selected)
-                        .Select(x => x.Name).ToList());
-                }
-                else if (filter is FacetNumericRangeDefinition)
-                {
-                    var numericFilter = filter as FacetNumericRangeDefinition;
-                    var ranges = new List<SelectableNumericRange>();
-                    var selectedFacets = facetGroupOption.Facets.Where(x => x.Selected);
-                    foreach (var facetOption in selectedFacets)
-                    {
-                        var range = numericFilter.Range.FirstOrDefault(x => x.Id.Equals(facetOption.Key.Split(':')[1]));
-                        if (range == null)
-                        {
-                            continue;
-                        }
-                        ranges.Add(new SelectableNumericRange
-                        {
-                            From = range.From,
-                            Id = range.Id,
-                            Selected = range.Selected,
-                            To = range.To
-                        });
-                    }
-
-                    query = numericFilter.Filter(query, ranges);
-                }
-            }
-            return query;
-        }
-
         private ITypeSearch<EntryContentBase> ApplyFilters(ITypeSearch<EntryContentBase> query,
             IEnumerable<Filter> filters)
         {
@@ -900,7 +759,7 @@ namespace Foundation.Features.Search
             return new ProductSearchResults
             {
                 ProductViewModels = Enumerable.Empty<ProductTileViewModel>(),
-                FacetGroups = Enumerable.Empty<FacetGroupOption>(),
+                FacetGroups = Enumerable.Empty<FacetOptionGroup>(),
             };
         }
 
@@ -911,10 +770,10 @@ namespace Foundation.Features.Search
         /// <param name="searchResult">The search result (product list).</param>
         /// <param name="currentContent">The product category.</param>
         /// <param name="searchQuery">The search query string to filter Best Bet result.</param>
-        private void ApplyBoostedProperties(ref List<ProductTileViewModel> productViewModels, IContentResult<EntryContentBase> searchResult, IContent currentContent, string searchQuery)
+        private void ApplyBoostedProperties(ref List<ProductTileViewModel> productViewModels, IContentResult<ISearchableProduct> searchResult, IContent currentContent, string searchQuery)
         {
             var node = currentContent as GenericNode;
-            var products = new List<EntryContentBase>();
+            var products = new List<ISearchableProduct>();
 
             if (node != null)
             {
@@ -967,7 +826,7 @@ namespace Foundation.Features.Search
                 }
                 else if (content is GenericNode featuredNode)
                 {
-                    foreach (var nodeEntry in _contentLoader.GetChildren<EntryContentBase>(content.ContentLink)
+                    foreach (var nodeEntry in _contentLoader.GetChildren<ISearchableProduct>(content.ContentLink)
                         .Where(x => !(x is VariationContent))
                         .Take(featuredNode.PartialPageSize))
                     {

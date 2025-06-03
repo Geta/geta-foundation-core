@@ -1,10 +1,11 @@
 ﻿using EPiServer.Commerce.Catalog.DataAnnotations;
 using EPiServer.SpecializedProperties;
+using Geta.EPi.Commerce.UI.Facets.Attributes;
 
 namespace Foundation.Features.CatalogContent.Package
 {
     [CatalogContentType(DisplayName = "Generic Package", GUID = "7b18ab7a-6344-4879-928e-e1b129d7379c", Description = "")]
-    public class GenericPackage : PackageContent, IProductRecommendations, IFoundationContent/*, IDashboardItem*/
+    public class GenericPackage : PackageContent, IProductRecommendations, IFoundationContent/*, IDashboardItem*/, ISearchableProduct
     {
         [Searchable]
         [CultureSpecific]
@@ -82,5 +83,13 @@ namespace Foundation.Features.CatalogContent.Package
         //    itemModel.Description = Description?.ToHtmlString();
         //    itemModel.Image = CommerceMediaCollection.FirstOrDefault()?.AssetLink;
         //}
+
+        [UseAsFacetItem]
+        [Ignore]
+        public virtual string Size { get; set; }
+
+        [UseAsFacetItem]
+        [Ignore]
+        public virtual string Color { get; set; }
     }
 }

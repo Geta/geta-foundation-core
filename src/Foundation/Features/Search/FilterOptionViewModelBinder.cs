@@ -1,7 +1,9 @@
 ﻿using Foundation.Infrastructure.Find.Facets;
+using Geta.EPi.Commerce.UI.Facets.Models;
 using Mediachase.Search;
 using Mediachase.Search.Extensions;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using FacetOption = Foundation.Infrastructure.Find.Facets.FacetOption;
 
 namespace Foundation.Features.Search
 {
@@ -139,9 +141,9 @@ namespace Foundation.Features.Search
             }
         }
 
-        private List<FacetGroupOption> CreateFacetGroups(string facets)
+        private List<FacetOptionGroup> CreateFacetGroups(string facets)
         {
-            var facetGroups = new List<FacetGroupOption>();
+            var facetGroups = new List<FacetOptionGroup>();
             if (string.IsNullOrEmpty(facets))
             {
                 return facetGroups;
@@ -158,19 +160,19 @@ namespace Foundation.Features.Search
                 {
                     continue;
                 }
-                var facetGroup = facetGroups.FirstOrDefault(fg => fg.GroupFieldName == searchFilter.FieldName);
+                var facetGroup = facetGroups.FirstOrDefault(fg => fg.Name == searchFilter.FieldName);
                 if (facetGroup == null)
                 {
                     facetGroup = CreateFacetGroup(searchFilter);
                     facetGroups.Add(facetGroup);
                 }
-                var facetOption = facetGroup.Facets.FirstOrDefault(fo => fo.Name == data[1]);
+                var facetOption = facetGroup.Options.FirstOrDefault(fo => fo.Name == data[1]);
                 if (facetOption != null)
                 {
                     continue;
                 }
                 facetOption = CreateFacetOption(data[1], $"{data[0]}:{data[1]}");
-                facetGroup.Facets.Add(facetOption);
+                facetGroup.Options.Add(facetOption);
             }
             return facetGroups;
         }
@@ -181,17 +183,17 @@ namespace Foundation.Features.Search
                 filter.FieldName.Equals(facet, System.StringComparison.InvariantCultureIgnoreCase));
         }
 
-        private FacetGroupOption CreateFacetGroup(FacetDefinition searchFilter)
+        private FacetOptionGroup CreateFacetGroup(FacetDefinition searchFilter)
         {
-            return new FacetGroupOption
+            return new FacetOptionGroup
             {
-                GroupFieldName = searchFilter.FieldName,
-                GroupName = searchFilter.DisplayName,
-                Facets = new List<FacetOption>()
+                Key = searchFilter.FieldName,
+                Name = searchFilter.DisplayName,
+                Options = new List<Geta.EPi.Commerce.UI.Facets.Models.FacetOption>()
             };
         }
 
-        private static FacetOption CreateFacetOption(string name, string key) => new FacetOption { Name = name, Key = key, Selected = true };
+        private static Geta.EPi.Commerce.UI.Facets.Models.FacetOption CreateFacetOption(string name, string key) => new() { Name = name, Key = key, Selected = true };
 
         public SearchFilter GetSearchFilterForNode(NodeContent nodeContent)
         {

@@ -1,8 +1,10 @@
 ﻿using EPiServer.Commerce.Catalog.Linking;
 using EPiServer.Find.Commerce.Services.Internal;
+using Foundation.Features.CatalogContent;
 using Foundation.Infrastructure.Cms;
 using Mediachase.Commerce.InventoryService;
 using Mediachase.Commerce.Markets;
+using ICategorizable = EPiServer.Commerce.Catalog.ContentTypes.ICategorizable;
 
 namespace Foundation.Infrastructure.Commerce.Extensions
 {
@@ -56,6 +58,13 @@ namespace Foundation.Infrastructure.Commerce.Extensions
             return entryContentBase is VariationContent variationContent
                 ? variationContent.ContentLink.GetStockPlacements()
                 : Enumerable.Empty<Inventory>();
+        }
+
+        public static decimal DefaultPrice(this ISearchableProduct searchableProduct)
+        {
+            if (searchableProduct is EntryContentBase entryContentBase)
+                return entryContentBase.DefaultPrice();
+            return 0;
         }
 
         public static decimal DefaultPrice(this EntryContentBase entryContentBase)
@@ -141,6 +150,15 @@ namespace Foundation.Infrastructure.Commerce.Extensions
                 .OfType<VariationContent>();
         }
 
+        public static IEnumerable<string> Outline(this ISearchableProduct searchableProduct)
+        {
+            var nodes = ContentLoader.Value
+                .GetItems(searchableProduct.GetNodeRelations().Select(x => x.Parent), searchableProduct.Language)
+                .OfType<NodeContent>();
+
+            return nodes.Select(x => GetOutlineForNode(x.Code));
+        }
+
         public static IEnumerable<string> Outline(this EntryContentBase productContent)
         {
             var nodes = ContentLoader.Value
@@ -150,9 +168,15 @@ namespace Foundation.Infrastructure.Commerce.Extensions
             return nodes.Select(x => GetOutlineForNode(x.Code));
         }
 
-        public static int SortOrder(this EntryContentBase productContent)
+        public static int SortOrder(this EntryContentBase entryContentBase)
         {
-            var node = productContent.GetNodeRelations().FirstOrDefault();
+            var node = entryContentBase.GetNodeRelations().FirstOrDefault();
+            return node?.SortOrder ?? 0;
+        }
+
+        public static int SortOrder(this ISearchableProduct searchableProduct)
+        {
+            var node = searchableProduct.GetNodeRelations().FirstOrDefault();
             return node?.SortOrder ?? 0;
         }
 

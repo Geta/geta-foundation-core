@@ -1,5 +1,6 @@
 ﻿using EPiServer.Commerce.Catalog.DataAnnotations;
 using EPiServer.SpecializedProperties;
+using Geta.EPi.Commerce.UI.Facets.Attributes;
 
 namespace Foundation.Features.CatalogContent.Bundle
 {
@@ -9,7 +10,7 @@ namespace Foundation.Features.CatalogContent.Bundle
         MetaClassName = "FashionBundle",
         Description = "Displays a bundle, which is collection of individual fashion variants.")]
     [ImageUrl("~/content/icons/pages/CMS-icon-page-21.png")]
-    public class GenericBundle : BundleContent, IProductRecommendations, IFoundationContent/*, IDashboardItem*/
+    public class GenericBundle : BundleContent, IProductRecommendations, IFoundationContent/*, IDashboardItem*/, ISearchableProduct
     {
         [Searchable]
         [CultureSpecific]
@@ -83,5 +84,13 @@ namespace Foundation.Features.CatalogContent.Bundle
         //    itemModel.Description = Description?.ToHtmlString();
         //    itemModel.Image = CommerceMediaCollection.FirstOrDefault()?.AssetLink;
         //}
+
+        [UseAsFacetItem]
+        [Ignore]
+        public virtual string Size { get; set; }
+
+        [UseAsFacetItem]
+        [Ignore]
+        public virtual string Color { get; set; }
     }
 }

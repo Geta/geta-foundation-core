@@ -1,4 +1,5 @@
 ﻿using Foundation.Infrastructure.Find.Facets;
+using Geta.EPi.Commerce.UI.Facets.Models;
 using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace Foundation.Features.Search
@@ -45,7 +46,7 @@ namespace Foundation.Features.Search
                 return pages;
             }
         }
-        public List<FacetGroupOption> FacetGroups { get; set; }
+        public List<FacetOptionGroup> FacetGroups { get; set; }
         public bool SearchProduct { get; set; }
     }
 }

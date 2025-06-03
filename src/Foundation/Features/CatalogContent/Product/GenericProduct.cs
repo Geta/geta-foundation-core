@@ -1,6 +1,7 @@
 using EPiServer.Commerce.Catalog.DataAnnotations;
 using EPiServer.SpecializedProperties;
 using Foundation.Infrastructure.Commerce.Models.EditorDescriptors;
+using Geta.EPi.Commerce.UI.Facets.Attributes;
 
 namespace Foundation.Features.CatalogContent.Product
 {
@@ -10,7 +11,7 @@ namespace Foundation.Features.CatalogContent.Product
         DisplayName = "Generic Product",
         Description = "Generic product supports mutiple products")]
     [ImageUrl("/icons/cms/pages/CMS-icon-page-23.png")]
-    public class GenericProduct : ProductContent, IProductRecommendations, IFoundationContent/*, IDashboardItem*/
+    public class GenericProduct : ProductContent, IProductRecommendations, IFoundationContent/*, IDashboardItem*/, ISearchableProduct
     {
         #region Content
         [Searchable]
@@ -193,5 +194,13 @@ namespace Foundation.Features.CatalogContent.Product
         //    itemModel.Description = Description?.ToHtmlString();
         //    itemModel.Image = CommerceMediaCollection.FirstOrDefault()?.AssetLink;
         //}
+
+        [UseAsFacetItem]
+        [Ignore]
+        public virtual string Size { get; set; }
+
+        [UseAsFacetItem]
+        [Ignore]
+        public virtual string Color { get; set; }
     }
 }

@@ -2,15 +2,17 @@ using EPiServer.Commerce.Catalog.DataAnnotations;
 using EPiServer.SpecializedProperties;
 using Foundation.Features.Blocks.ElevatedRoleBlock;
 using Foundation.Infrastructure.Commerce.Models.EditorDescriptors;
+using Geta.EPi.Commerce.UI.Facets.Attributes;
 
 namespace Foundation.Features.CatalogContent.Variation
 {
     [CatalogContentType(DisplayName = "Generic Variant", GUID = "1aaa2c58-c424-4c37-81b0-77e76d254eb0", Description = "Generic variant supports multiple variation types")]
     [ImageUrl("/icons/cms/pages/CMS-icon-page-23.png")]
-    public class GenericVariant : VariationContent, IProductRecommendations, IFoundationContent/*, IDashboardItem*/
+    public class GenericVariant : VariationContent, IProductRecommendations, IFoundationContent/*, IDashboardItem*/, ISearchableProduct
     {
         [Tokenize]
         [Searchable]
+        [UseAsFacetItem]
         [IncludeInDefaultSearch]
         [BackingType(typeof(PropertyString))]
         [Display(Name = "Size", Order = 5)]
@@ -18,6 +20,7 @@ namespace Foundation.Features.CatalogContent.Variation
 
         [Tokenize]
         [Searchable]
+        [UseAsFacetItem]
         [CultureSpecific]
         [IncludeInDefaultSearch]
         [BackingType(typeof(PropertyString))]

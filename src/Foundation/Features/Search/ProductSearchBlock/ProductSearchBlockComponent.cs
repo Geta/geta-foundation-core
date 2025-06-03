@@ -6,6 +6,8 @@ using Foundation.Features.Blocks.ProductFilterBlocks;
 using Foundation.Features.CatalogContent;
 using Foundation.Infrastructure.Commerce.Models.EditorDescriptors;
 using Foundation.Infrastructure.Find.Facets;
+using Geta.EPi.Commerce.UI.Facets.Models;
+
 //using Foundation.Social.Services;
 using System.Configuration;
 
@@ -54,7 +56,7 @@ namespace Foundation.Features.Search.ProductSearchBlock
                 result = new ProductSearchResults
                 {
                     ProductViewModels = Enumerable.Empty<ProductTileViewModel>(),
-                    FacetGroups = Enumerable.Empty<FacetGroupOption>()
+                    FacetGroups = Enumerable.Empty<FacetOptionGroup>()
                 };
             }
 
@@ -208,7 +210,7 @@ namespace Foundation.Features.Search.ProductSearchBlock
                 Q = productSearchBlock.SearchTerm,
                 PageSize = productSearchBlock.ResultsPerPage,
                 Sort = string.Empty,
-                FacetGroups = new List<FacetGroupOption>(),
+                FacetGroups = new List<FacetOptionGroup>(),
                 Page = 1
             };
 

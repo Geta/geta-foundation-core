@@ -1,6 +1,7 @@
 using EPiServer.Find;
 using EPiServer.Find.Api.Facets;
 using EPiServer.Find.Api.Querying;
+using Geta.EPi.Commerce.UI.Facets.Models;
 
 namespace Foundation.Infrastructure.Find.Facets
 {
@@ -24,6 +25,6 @@ namespace Foundation.Infrastructure.Find.Facets
         public string RenderType { get; set; }
 
         public abstract ITypeSearch<T> Facet<T>(ITypeSearch<T> query, Filter filter);
-        public abstract void PopulateFacet(FacetGroupOption facetGroupOption, Facet facet, string selectedFacets);
+        public abstract void PopulateFacet(FacetOptionGroup facetGroupOption, Facet facet, string selectedFacets);
     }
 }
