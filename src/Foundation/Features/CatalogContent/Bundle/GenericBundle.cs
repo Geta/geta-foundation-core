@@ -46,6 +46,9 @@ namespace Foundation.Features.CatalogContent.Bundle
         [Display(Name = "Show recommendations", Order = 35)]
         public virtual bool ShowRecommendations { get; set; }
 
+        [Ignore]
+        public string Brand { get; set; } = "";
+
         #region Implement IFoundationContent
 
         [CultureSpecific]

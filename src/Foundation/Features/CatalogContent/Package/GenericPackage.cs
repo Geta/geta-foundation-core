@@ -20,6 +20,9 @@ namespace Foundation.Features.CatalogContent.Package
         [Display(Name = "New arrival", Order = 15)]
         public virtual bool NewArrival { get; set; }
 
+        [Ignore]
+        public string Brand { get; set; } = "";
+
         [Searchable]
         [CultureSpecific]
         [Tokenize]

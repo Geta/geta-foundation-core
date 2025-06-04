@@ -27,11 +27,11 @@
                         <li class="selection--cm__inline-item">
                             <label class="filters-tag">
                                 @Html.CheckBox(string.Format("FilterOption.FacetGroups[{0}].Facets[{1}].Selected", i, j),
-                                    new { @class = "jsSearchFacetSelected position-absolute", @style = "z-index: -100;", data_facetkey = facet.Key, @checked = "checked" })
+                                    new { @class = "jsSearchFacetSelected position-absolute", @style = "z-index: -100;", data_facetkey = $"{facetGroup.Key}:{facet.Value}", @checked = "checked" })
                                 @facet.Name
                                 <span class="filters-tag__remove jsRemoveTag"><i data-feather="x" width="12px"></i></span>
                             </label>
-                            @Html.TextBox(string.Format("FilterOption.FacetGroups[{0}].Facets[{1}].Key", i, j), facet.Key, new { @hidden = "true" })
+                            @Html.TextBox(string.Format("FilterOption.FacetGroups[{0}].Facets[{1}].Key", i, j), facetGroup.Key, new { @hidden = "true" })
                             @Html.TextBox(string.Format("FilterOption.FacetGroups[{0}].Facets[{1}].Name", i, j), facet.Name, new { @hidden = "true" })
                         </li>
                     }

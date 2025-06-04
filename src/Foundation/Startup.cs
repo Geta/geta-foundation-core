@@ -8,6 +8,8 @@ using EPiServer.ContentApi.Commerce;
 using EPiServer.ContentDefinitionsApi;
 using EPiServer.ContentManagementApi;
 using EPiServer.Data;
+using EPiServer.Find;
+using EPiServer.Find.Framework;
 using EPiServer.Labs.ContentManager;
 using EPiServer.Labs.ProjectEnhancements;
 using EPiServer.Marketing.Testing.Web.Initializers;
@@ -257,6 +259,9 @@ namespace Foundation
             services.AddDamSelectButton();
 
             services.AddServiceDefaults(_configuration, _webHostingEnvironment.ApplicationName);
+
+            services.AddSingleton(sp => sp.GetRequiredService<IClient>().Conventions);
+
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

@@ -57,6 +57,9 @@ namespace Foundation.Features.CatalogContent.Variation
         [BackingType(typeof(PropertyString))]
         public virtual string VirtualProductRole { get; set; }
 
+        [Ignore]
+        public string Brand { get; set; } = "";
+
         #region Manufacturer
 
         [Display(Name = "Mpn", GroupName = Infrastructure.TabNames.Manufacturer, Order = 5)]

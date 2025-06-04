@@ -158,7 +158,7 @@ namespace Foundation.Features.Search
                 {
                     continue;
                 }
-                var facetGroup = facetGroups.FirstOrDefault(fg => fg.Name == searchFilter.FieldName);
+                var facetGroup = facetGroups.FirstOrDefault(fg => fg.Name == searchFilter.Name);
                 if (facetGroup == null)
                 {
                     facetGroup = CreateFacetGroup(searchFilter);
@@ -169,28 +169,31 @@ namespace Foundation.Features.Search
                 {
                     continue;
                 }
-                facetOption = CreateFacetOption(data[1], $"{data[0]}:{data[1]}");
+                facetOption = CreateFacetOption(data[1]);
                 facetGroup.Options.Add(facetOption);
             }
             return facetGroups;
         }
 
-        private FacetDefinition GetSearchFilter(string facet, IContent content)
+        private FacetDescriptor GetSearchFilter(string facet, IContent content)
         {
+            if (content is IFacetContainer facetContainer && facetContainer.FacetFilters?.Facets != null)
+                return facetContainer.FacetFilters.Facets.FirstOrDefault(x => x.Property == facet);
+
             return null;
         }
 
-        private FacetOptionGroup CreateFacetGroup(FacetDefinition searchFilter)
+        private FacetOptionGroup CreateFacetGroup(FacetDescriptor searchFilter)
         {
             return new FacetOptionGroup
             {
-                Key = searchFilter.FieldName,
-                Name = searchFilter.DisplayName,
+                Key = searchFilter.Property,
+                Name = searchFilter.Name,
                 Options = new List<Geta.EPi.Commerce.UI.Facets.Models.FacetOption>()
             };
         }
 
-        private static Geta.EPi.Commerce.UI.Facets.Models.FacetOption CreateFacetOption(string name, string key) => new() { Name = name, Key = key, Selected = true };
+        private static Geta.EPi.Commerce.UI.Facets.Models.FacetOption CreateFacetOption(string value) => new() { Name = value, Key = value, Value = value, Selected = true };
 
         public SearchFilter GetSearchFilterForNode(NodeContent nodeContent)
         {

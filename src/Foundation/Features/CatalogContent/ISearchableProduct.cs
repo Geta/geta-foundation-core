@@ -24,5 +24,8 @@ namespace Foundation.Features.CatalogContent
 
         [UseAsFacetItem]
         string Color { get; set; }
+
+        [UseAsFacetItem]
+        string Brand { get; set; }
     }
 }
