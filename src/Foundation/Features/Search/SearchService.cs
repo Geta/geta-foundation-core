@@ -61,7 +61,6 @@ namespace Foundation.Features.Search
         private readonly ICurrencyService _currencyService;
         private readonly IContentLanguageAccessor _contentLanguageAccessor;
         private readonly IClient _findClient;
-        private readonly IFacetRegistry _facetRegistry;
         private const int DefaultPageSize = 18;
         //private readonly IFindUIConfiguration _findUIConfiguration;
         private readonly ReferenceConverter _referenceConverter;
@@ -78,7 +77,6 @@ namespace Foundation.Features.Search
             ICurrencyService currencyService,
             IContentLanguageAccessor contentLanguageAccessor,
             IClient findClient,
-            IFacetRegistry facetRegistry,
             //IFindUIConfiguration findUIConfiguration,
             ReferenceConverter referenceConverter,
             IContentRepository contentRepository,
@@ -93,7 +91,6 @@ namespace Foundation.Features.Search
             _currencyService = currencyService;
             _contentLanguageAccessor = contentLanguageAccessor;
             _findClient = findClient;
-            _facetRegistry = facetRegistry;
             //_findUIConfiguration = findUIConfiguration;
             //_findClient.Personalization().Refresh();
             _referenceConverter = referenceConverter;

@@ -1,5 +1,6 @@
 ﻿using Foundation.Infrastructure.Find.Facets;
 using Geta.EPi.Commerce.UI.Facets.Models;
+using Geta.EPi.Commerce.UI.Facets.Models.EditorModels;
 using Mediachase.Search;
 using Mediachase.Search.Extensions;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -12,17 +13,14 @@ namespace Foundation.Features.Search
         private readonly IContentLoader _contentLoader;
         private readonly LocalizationService _localizationService;
         private readonly IContentLanguageAccessor _contentLanguageAccessor;
-        private readonly IFacetRegistry _facetRegistry;
 
         public FilterOptionViewModelBinder(IContentLoader contentLoader,
             LocalizationService localizationService,
-            IContentLanguageAccessor contentLanguageAccessor,
-            IFacetRegistry facetRegistry)
+            IContentLanguageAccessor contentLanguageAccessor)
         {
             _contentLoader = contentLoader;
             _localizationService = localizationService;
             _contentLanguageAccessor = contentLanguageAccessor;
-            _facetRegistry = facetRegistry;
         }
 
         public async Task BindModelAsync(ModelBindingContext bindingContext)
@@ -137,11 +135,11 @@ namespace Foundation.Features.Search
         {
             if (model.FacetGroups == null)
             {
-                model.FacetGroups = CreateFacetGroups(facets);
+                model.FacetGroups = CreateFacetGroups(facets, content);
             }
         }
 
-        private List<FacetOptionGroup> CreateFacetGroups(string facets)
+        private List<FacetOptionGroup> CreateFacetGroups(string facets, IContent content)
         {
             var facetGroups = new List<FacetOptionGroup>();
             if (string.IsNullOrEmpty(facets))
@@ -155,7 +153,7 @@ namespace Foundation.Features.Search
                 {
                     continue;
                 }
-                var searchFilter = GetSearchFilter(data[0]);
+                var searchFilter = GetSearchFilter(data[0], content);
                 if (searchFilter == null)
                 {
                     continue;
@@ -177,10 +175,9 @@ namespace Foundation.Features.Search
             return facetGroups;
         }
 
-        private FacetDefinition GetSearchFilter(string facet)
+        private FacetDefinition GetSearchFilter(string facet, IContent content)
         {
-            return _facetRegistry.GetFacetDefinitions().FirstOrDefault(filter =>
-                filter.FieldName.Equals(facet, System.StringComparison.InvariantCultureIgnoreCase));
+            return null;
         }
 
         private FacetOptionGroup CreateFacetGroup(FacetDefinition searchFilter)

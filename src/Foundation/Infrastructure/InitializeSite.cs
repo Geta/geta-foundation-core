@@ -182,32 +182,12 @@ namespace Foundation.Infrastructure
         private void ContextOnInitComplete(object sender, EventArgs eventArgs)
         {
             //_services.AddTransient<ContentAreaRenderer, FoundationContentAreaRenderer>();
-            var settings = _locator.GetInstance<ISettingsService>().GetSiteSettings<SearchSettings>();
-            if (settings != null)
-            {
-                InitializeFacets(settings.SearchFiltersConfiguration);
-            }
-
             _locator.GetInstance<IContentEvents>().PublishedContent += OnPublishedContent;
         }
 
         private void OnPublishedContent(object sender, ContentEventArgs contentEventArgs)
         {
-            if (contentEventArgs.Content is IFacetConfiguration facetConfiguration)
-            {
-                InitializeFacets(facetConfiguration.SearchFiltersConfiguration);
-            }
-        }
 
-        private void InitializeFacets(IList<FacetFilterConfigurationItem> configItems)
-        {
-            if (configItems != null && configItems.Any())
-            {
-                _locator.GetInstance<IFacetRegistry>().Clear();
-                configItems
-                    .ToList()
-                    .ForEach(x => _locator.GetInstance<IFacetRegistry>().AddFacetDefinitions(_locator.GetInstance<IFacetConfigFactory>().GetFacetDefinition(x)));
-            }
         }
 
         private void AddMetaFieldLineItem(object sender, EventArgs eventArgs)
