@@ -1,3 +1,5 @@
+# NOTE - This branch is used as a demo project for [Geta.EPi.Commerce.UI.Facets](https://github.com/Geta/Epi.Commerce.UI)
+
 <div align="center">
   <a href="https://github.com/episerver/Foundation">
     <img src="https://www.optimizely.com/globalassets/02.-global-images/navigation/optimizely_logo_navigation.svg" alt="Optimizely Foundation" width="400">
