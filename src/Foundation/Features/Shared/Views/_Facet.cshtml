@@ -1,4 +1,5 @@
 @using Foundation.Features.Search
+@using Geta.EPi.Commerce.UI.Facets.Models
 
 @model FilterOptionViewModel
 
@@ -27,7 +28,7 @@
                         <li class="selection--cm__inline-item facet-active">
                             <label class="filters-tag selected-filter">
                                 @Html.CheckBox(string.Format("FilterOption.FacetGroups[{0}].Facets[{1}].Selected", i, j),
-                                         new { @class = "jsSearchFacetSelected position-absolute", @style = "z-index: -100;", data_facetkey = facetGroup.Key, @checked = "checked" })
+                                                  new { @class = "jsSearchFacetSelected position-absolute", @style = "z-index: -100;", data_facetkey = facetGroup.Key, @checked = "checked" })
                                 @facet.Name 
                                 <span class="glyphicon glyphicon-remove filters-tag__remove jsRemoveTag"><i data-feather="x" width="12px"></i></span>
                             </label>
@@ -58,33 +59,77 @@
                     @Html.TextBox(string.Format("FilterOption.FacetGroups[{0}].GroupFieldName", i), facetGroup.Name, new { @hidden = "true" })
                 </dt>
                 <dd class="odd">
-                    <ul class="selection--cm__dropdown" style="list-style:none;">
-                        @for (var j = 0; j < facetGroup.Options.Count; j++)
-                        {
-                            var facet = facetGroup.Options[j];
-                            if (facet.Selected)
+                    @if (facetGroup.DisplayType == FacetDisplayType.Single)
+                    {
+                        <ul class="selection--cm__dropdown" style="list-style:none;">
+                            @for (var j = 0; j < facetGroup.Options.Count; j++)
                             {
-                                continue;
+                                var facet = facetGroup.Options[j];
+                                if (facet.Selected)
+                                {
+                                    continue;
+                                }
+
+                                <li>
+                                    <label class="facet-link">
+                                        @Html.RadioButton(string.Format("FilterOption.FacetGroups[{0}].Facets[{1}].Selected", i, j),
+                                                     facet.Selected,
+                                                     new { @class = "jsSearchFacet position-absolute", @style = "z-index: -100;     margin-left: -30px; margin-top: 3px", data_facetkey = $"{facetGroup.Key}:{facet.Value}" })
+                                        @facet.Name (@facet.Count)
+                                    </label>
+
+                                    @Html.TextBox(string.Format("FilterOption.FacetGroups[{0}].Facets[{1}].Key", i, j), facetGroup.Key, new
+                                        {
+                                            @hidden = "true"
+                                        })
+                                    @Html.TextBox(string.Format("FilterOption.FacetGroups[{0}].Facets[{1}].Name", i, j), facet.Name, new
+                                        {
+                                            @hidden = "true"
+                                        })
+                                </li>
                             }
-                            <li>
-                                <label class="facet-link">
-                                    @Html.CheckBox(string.Format("FilterOption.FacetGroups[{0}].Facets[{1}].Selected", i, j),
-                                        facet.Selected,
-                                        new { @class = "jsSearchFacet position-absolute", @style = "z-index: -100;     margin-left: -30px; margin-top: 3px", data_facetkey = $"{facetGroup.Key}:{facet.Value}" })
-                                    @facet.Name (@facet.Count)
-                                </label>
-                                
-                                @Html.TextBox(string.Format("FilterOption.FacetGroups[{0}].Facets[{1}].Key", i, j), facetGroup.Key, new
+                        </ul>
+                    }
+                    
+                    @if (facetGroup.DisplayType == FacetDisplayType.Multiple)
+                    {
+                        <ul class="selection--cm__dropdown" style="list-style:none;">
+                            @for (var j = 0; j < facetGroup.Options.Count; j++)
+                            {
+                                var facet = facetGroup.Options[j];
+                                if (facet.Selected)
                                 {
-                                    @hidden = "true"
-                                })
-                                @Html.TextBox(string.Format("FilterOption.FacetGroups[{0}].Facets[{1}].Name", i, j), facet.Name, new
-                                {
-                                    @hidden = "true"
-                                })
-                            </li>
-                        }
-                    </ul>
+                                    continue;
+                                }
+
+                                <li>
+                                    <label class="facet-link">
+                                        @Html.CheckBox(string.Format("FilterOption.FacetGroups[{0}].Facets[{1}].Selected", i, j),
+                                            facet.Selected,
+                                            new { @class = "jsSearchFacet position-absolute", @style = "z-index: -100;     margin-left: -30px; margin-top: 3px", data_facetkey = $"{facetGroup.Key}:{facet.Value}" })
+                                        @facet.Name (@facet.Count)
+                                    </label>
+
+                                    @Html.TextBox(string.Format("FilterOption.FacetGroups[{0}].Facets[{1}].Key", i, j), facetGroup.Key, new
+                                    {
+                                        @hidden = "true"
+                                    })
+                                    @Html.TextBox(string.Format("FilterOption.FacetGroups[{0}].Facets[{1}].Name", i, j), facet.Name, new
+                                    {
+                                        @hidden = "true"
+                                    })
+                                </li>
+                            }
+                        </ul>
+                    }
+
+                    @if (facetGroup.Type == FacetType.NumericRange)
+                    {
+                        decimal.TryParse(facetGroup.Options[0].Value, out var min);
+                        decimal.TryParse(facetGroup.Options[1].Value, out var max);
+                        <input class="jsRangeFacet" type="range" min="@min" max="@max" data-facetkey=@facetGroup.Key value="@min"/>
+                    }
+
                 </dd>
             </dl>
         }

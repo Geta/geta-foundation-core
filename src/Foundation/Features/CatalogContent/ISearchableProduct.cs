@@ -27,5 +27,8 @@ namespace Foundation.Features.CatalogContent
 
         [UseAsFacetItem]
         string Brand { get; set; }
+
+        [UseAsFacetItem]
+        decimal FakePrice { get; }
     }
 }

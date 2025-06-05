@@ -68,6 +68,14 @@ export class ProductSearch {
             });
         }
 
+        if (document.querySelector(".jsRangeFacet") != null) {
+            Array.from(document.querySelectorAll(".jsRangeFacet")).forEach(function (el, i) {
+                el.addEventListener("change", function () {
+                    inst.search();
+                });
+            });
+        }
+
         if (document.querySelector(".jsSearchFacetRemoveAll") != null) {
             document.querySelector('.jsSearchFacetRemoveAll').addEventListener("click", function () {
                 inst.removeAllTag();
@@ -201,6 +209,13 @@ export class ProductSearch {
             if (el.checked == true) {
                 let selectedFacet = encodeURIComponent(el.getAttribute('data-facetkey'));
                 facets.push(selectedFacet);
+            }
+        });
+        Array.from(document.querySelectorAll(".jsRangeFacet")).forEach(function (el, i) {
+            if (el.value > el.min) {
+                let selectedFacet = encodeURIComponent(el.getAttribute('data-facetkey'));
+                facets.push(`${selectedFacet}:from:${el.value}`);
+                facets.push(`${selectedFacet}:to:${el.max}`);
             }
         });
         return this.getUrl(facets);

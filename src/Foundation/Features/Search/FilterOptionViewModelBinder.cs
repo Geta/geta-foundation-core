@@ -1,6 +1,7 @@
 ﻿using Foundation.Infrastructure.Find.Facets;
 using Geta.EPi.Commerce.UI.Facets.Models;
 using Geta.EPi.Commerce.UI.Facets.Models.EditorModels;
+using JetBrains.Annotations;
 using Mediachase.Search;
 using Mediachase.Search.Extensions;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -149,7 +150,7 @@ namespace Foundation.Features.Search
             foreach (var facet in facets.Split(new[] { ',' }, System.StringSplitOptions.RemoveEmptyEntries))
             {
                 var data = facet.Split(':');
-                if (data.Length != 2)
+                if (data.Length is < 2 or > 3)
                 {
                     continue;
                 }
@@ -169,10 +170,28 @@ namespace Foundation.Features.Search
                 {
                     continue;
                 }
-                facetOption = CreateFacetOption(data[1]);
-                facetGroup.Options.Add(facetOption);
+
+                if (searchFilter.Type == FacetDisplayType.Range)
+                    facetOption = CreateRangeFacetOption(data);
+                else
+                    facetOption = CreateFacetOption(data[1]);
+
+                if(facetOption != null) 
+                    facetGroup.Options.Add(facetOption);
             }
             return facetGroups;
+        }
+
+        [CanBeNull]
+        private Geta.EPi.Commerce.UI.Facets.Models.FacetOption CreateRangeFacetOption(string[] data)
+        {
+            if (data.Length < 3)
+                return null;
+
+            return new Geta.EPi.Commerce.UI.Facets.Models.FacetOption
+            {
+                Name = data[0], Value = data[2], Selected = true, Key = data[1]
+            };
         }
 
         private FacetDescriptor GetSearchFilter(string facet, IContent content)

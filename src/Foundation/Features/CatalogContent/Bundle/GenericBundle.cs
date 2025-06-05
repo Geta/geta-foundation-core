@@ -95,5 +95,15 @@ namespace Foundation.Features.CatalogContent.Bundle
         [UseAsFacetItem]
         [Ignore]
         public virtual string Color { get; set; }
+
+        [UseAsFacetItem]
+        public virtual decimal FakePrice
+        {
+            get
+            {
+                var rand = new Random();
+                return rand.Next(1, 10000);
+            }
+        }
     }
 }

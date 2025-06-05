@@ -635,7 +635,7 @@ namespace Foundation.Features.Search
             if (content is not GenericNode node)
                 return new List<FacetOptionGroup>();
 
-            return node.FacetFilters?.Facets?.Select(x => GetFacetOption(selectedFacets, x)).ToList();
+            return node.FacetFilters?.Facets?.Select(x => GetFacetOption(selectedFacets, x)).ToList() ?? [];
         }
 
         private FacetOptionGroup GetFacetOption(IEnumerable<FacetOptionGroup> selectedFacets, FacetDescriptor descriptor) => new FacetOptionGroup

@@ -60,6 +60,16 @@ namespace Foundation.Features.CatalogContent.Variation
         [Ignore]
         public string Brand { get; set; } = "";
 
+        [UseAsFacetItem]
+        public virtual decimal FakePrice
+        {
+            get
+            {
+                var rand = new Random();
+                return rand.Next(1, 10000);
+            }
+        }
+
         #region Manufacturer
 
         [Display(Name = "Mpn", GroupName = Infrastructure.TabNames.Manufacturer, Order = 5)]
