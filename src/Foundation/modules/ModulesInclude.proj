@@ -33,32 +33,6 @@
         <Copy SourceFiles="@(FilesToCopy)" DestinationFolder="$([MSBuild]::EnsureTrailingSlash('$(DestinationFolder)'))%(RecursiveDir)"/>
     </Target>
 
-    <!-- *************** Foundation Module *************** -->
-<!--    <Target Name="CopyFoundationModule" BeforeTargets="BeforeBuild">
-        <Message Text="Copying Foundation module" Importance="high"/>
-        <PropertyGroup>
-            <FoundationModuleDir>modules\_protected\Foundation</FoundationModuleDir>
-            <FoundationModuleVersion>1.1.0</FoundationModuleVersion>
-        </PropertyGroup>
-        <ItemGroup>
-            <FoundationClientResources Include="..\..\sandbox\geta-packages-foundation-sandbox\src\Foundation\modules\_protected\Foundation\ClientResources\**\*"/>
-        </ItemGroup>
-
-        <RemoveDir Directories="$(FoundationModuleDir)" ContinueOnError="false"/>
-        <Copy SourceFiles="..\..\sandbox\geta-packages-foundation-sandbox\src\Foundation\modules\_protected\Foundation\module.config" DestinationFolder="$(FoundationModuleDir)"/>
-        <Copy SourceFiles="@(FoundationClientResources)" OverwriteReadOnlyFiles="true" DestinationFiles="@(FoundationClientResources -> '$(FoundationModuleDir)\$(FoundationModuleVersion)\%(RecursiveDir)%(Filename)%(Extension)')"/>
-        <XmlPoke XmlInputPath="$(FoundationModuleDir)\module.config" Query="/module/@clientResourceRelativePath" Value="$(FoundationModuleVersion)"/>
-
-        <ItemGroup>
-            <Content Include="modules\_protected\Foundation\$(FoundationModuleVersion)\**\*.*">
-                <Pack>true</Pack>
-                <BuildAction>Content</BuildAction>
-                <PackageCopyToOutput>true</PackageCopyToOutput>
-                <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-            </Content>
-        </ItemGroup>
-    </Target>-->
-
     <!-- *************** Copying Foundation modules from build to publish folder *************** -->
     <Target Name="CopyingFoundationModulesFromBuildToPublishFolder" BeforeTargets="PrepareForPublish">
         <PropertyGroup>
