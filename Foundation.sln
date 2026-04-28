@@ -5,6 +5,10 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Foundation", "src\Foundation\Foundation.csproj", "{856C325A-2CC0-422C-B964-1BD10EA14C99}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Foundation.AppHost", "src\Foundation.AppHost\Foundation.AppHost.csproj", "{4FAA7522-C048-42A3-8D4B-E0F315A2EEF5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Foundation.AppHost.ServiceDefaults", "src\Foundation.AppHost.ServiceDefaults\Foundation.AppHost.ServiceDefaults.csproj", "{6E594020-3C04-4485-9FA4-2D339BD6AFCE}"
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{04685227-468D-440F-A0DB-4E6C01D550CA}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
@@ -27,6 +31,14 @@ Global
 		{856C325A-2CC0-422C-B964-1BD10EA14C99}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{856C325A-2CC0-422C-B964-1BD10EA14C99}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{856C325A-2CC0-422C-B964-1BD10EA14C99}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4FAA7522-C048-42A3-8D4B-E0F315A2EEF5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4FAA7522-C048-42A3-8D4B-E0F315A2EEF5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4FAA7522-C048-42A3-8D4B-E0F315A2EEF5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4FAA7522-C048-42A3-8D4B-E0F315A2EEF5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6E594020-3C04-4485-9FA4-2D339BD6AFCE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6E594020-3C04-4485-9FA4-2D339BD6AFCE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6E594020-3C04-4485-9FA4-2D339BD6AFCE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6E594020-3C04-4485-9FA4-2D339BD6AFCE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
