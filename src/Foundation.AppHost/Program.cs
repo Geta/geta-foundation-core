@@ -4,7 +4,30 @@ using System.Diagnostics;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
-const string srcDirectoryPath = "../../../../src";
+string FindSrcDirectory()
+{
+    var dir = new DirectoryInfo(AppContext.BaseDirectory);
+    for (int i = 0; i < 10; i++)
+    {
+        var candidate = Path.Combine(dir.FullName, "src");
+        if (Directory.Exists(candidate))
+        {
+            return Path.GetFullPath(candidate);
+        }
+
+        dir = dir.Parent;
+        if (dir == null) break;
+    }
+
+    return string.Empty;
+}
+
+var srcDirectoryPath = FindSrcDirectory();
+
+if (string.IsNullOrEmpty(srcDirectoryPath))
+{
+    throw new Exception("Foundation.Web project directory could not be found: expected a 'src' folder in repository tree");
+}
 
 var projectDirectoryPath = Directory.Exists(srcDirectoryPath)
     ? Directory

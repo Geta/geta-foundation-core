@@ -1,7 +1,5 @@
 using Advanced.CMS.AdvancedReviews;
-using EPiServer.Authorization;
 using EPiServer.Cms.UI.VisitorGroups;
-using EPiServer.Personalization.VisitorGroups;
 // CMS 13 removed: EPiServer.Cms.TinyMce.SpellChecker no longer exists in CMS 13.
 // using EPiServer.Cms.TinyMce.SpellChecker;
 // EPiServer.ContentApi.Cms removed: EPiServer.ContentDeliveryApi.* requires EPiServer.CMS.UI.Core < 13.0.0
@@ -12,11 +10,13 @@ using EPiServer.Personalization.VisitorGroups;
 // using EPiServer.ContentManagementApi;
 using EPiServer.Data;
 using EPiServer.DependencyInjection;
+using EPiServer.Personalization.VisitorGroups;
 // EPiServer.OpenIDConnect removed: no CMS 13 version. Replaced by EPiServer.OptimizelyIdentity.
 // using EPiServer.OpenIDConnect;
 // EPiServer.ServiceApi removed: EPiServer.ServiceApi.Commerce requires EPiServer.Commerce.Core < 15.0.0
 // using EPiServer.ServiceApi;
 using EPiServer.Shell.Modules;
+using Foundation.AppHost.ServiceDefaults;
 using Foundation.Features.Checkout.Payments;
 using Foundation.Infrastructure.Cms.ModelBinders;
 using Foundation.Infrastructure.Cms.Users;
@@ -36,7 +36,6 @@ using Optimizely.Cms.DependencyInjection;
 // Optimizely.Cms.Preview1 removed: preview functionality absorbed into CMS 13 main package.
 // Phase 4: Optimizely Graph + Content Manager
 using Optimizely.Graph.DependencyInjection;
-using System.IO;
 
 namespace Foundation
 {
@@ -236,6 +235,8 @@ namespace Foundation
             //         o.AddDevelopmentSigningCredentials();
             //     });
             // }
+
+            services.AddServiceDefaults(_configuration, _webHostingEnvironment.ApplicationName);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
