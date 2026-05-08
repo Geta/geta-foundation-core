@@ -79,7 +79,7 @@ var project = builder.AddProject(config.WebName, csprojPath)
 
 if (config.WebPort != null)
 {
-    project.WithEndpoint(port: config.WebPort);
+    project.WithEndpoint("https", e => e.Port = config.WebPort.Value);
 }
 
 builder.Build().Run();
