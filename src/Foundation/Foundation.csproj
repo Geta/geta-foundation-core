@@ -146,6 +146,9 @@
     <Folder Include="Infrastructure\Kpi\" />
     <Folder Include="wwwroot\" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="modules\ModulesInclude.proj" />
+  </ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\Foundation.AppHost.ServiceDefaults\Foundation.AppHost.ServiceDefaults.csproj" />
 	</ItemGroup>
