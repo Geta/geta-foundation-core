@@ -92,6 +92,20 @@ namespace Foundation.Infrastructure.Commerce.Install
 
         private FoundationConfiguration GetFoundationConfiguration()
         {
+            try
+            {
+                return QueryFoundationConfiguration();
+            }
+            catch (SqlException ex) when (ex.Number == 2812 || ex.Number == 208)
+            {
+                _logger.Information("FoundationConfiguration schema not found, creating it...");
+                EnsureFoundationConfigurationSchema();
+                return QueryFoundationConfiguration();
+            }
+        }
+
+        private FoundationConfiguration QueryFoundationConfiguration()
+        {
             using (var connection = new SqlConnection(_connectionStringHandler.Commerce.ConnectionString))
             {
                 connection.Open();
@@ -115,6 +129,42 @@ namespace Foundation.Infrastructure.Commerce.Install
             }
 
             return null;
+        }
+
+        private void EnsureFoundationConfigurationSchema()
+        {
+            using var connection = new SqlConnection(_connectionStringHandler.Commerce.ConnectionString);
+            connection.Open();
+
+            var schemaSql = @"
+IF OBJECT_ID('dbo.FoundationConfiguration', 'U') IS NULL
+BEGIN
+    CREATE TABLE [dbo].[FoundationConfiguration](
+        [Id] [bigint] IDENTITY(1,1) NOT NULL,
+        [AppName] NVARCHAR(250) NOT NULL,
+        [IsInstalled] BIT NOT NULL DEFAULT(0),
+        CONSTRAINT [PK_FoundationConfiguration] PRIMARY KEY CLUSTERED ([Id] ASC));
+    INSERT INTO FoundationConfiguration (AppName) VALUES ('Foundation');
+END;
+
+IF OBJECT_ID('dbo.FoundationConfiguration_List', 'P') IS NULL
+    EXEC('CREATE PROCEDURE [dbo].[FoundationConfiguration_List] AS BEGIN SELECT * FROM FoundationConfiguration END');
+
+IF OBJECT_ID('dbo.FoundationConfiguration_SetInstalled', 'P') IS NULL
+    EXEC('CREATE PROCEDURE [dbo].[FoundationConfiguration_SetInstalled] AS BEGIN UPDATE FoundationConfiguration SET IsInstalled = 1 END');
+
+IF OBJECT_ID('dbo.FoundationConfiguration_Save', 'P') IS NULL
+    EXEC('CREATE PROCEDURE [dbo].[FoundationConfiguration_Save]
+        @Id INT = 0, @AppName NVARCHAR(250), @IsInstalled BIT = 0
+    AS BEGIN
+        IF @Id > 0
+            UPDATE FoundationConfiguration SET AppName = @AppName, IsInstalled = @IsInstalled WHERE Id = @Id
+        ELSE
+            INSERT INTO FoundationConfiguration (AppName, IsInstalled) VALUES (@AppName, @IsInstalled)
+    END');
+";
+            using var command = new SqlCommand(schemaSql, connection);
+            command.ExecuteNonQuery();
         }
     }
 }

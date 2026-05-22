@@ -43,6 +43,27 @@ create_db() {
 create_db "$cms_db"
 create_db "$commerce_db"
 
+# Wait for databases to become accessible (they may be in recovery after restart)
+wait_for_db() {
+    local db_name=$1
+    local j=0
+    while [[ $j -lt 12 ]]; do
+        $sql -d "$db_name" -Q "SELECT 1" > /dev/null 2>&1
+        if [ $? -eq 0 ]; then
+            echo "Database $db_name is online."
+            return 0
+        fi
+        ((j++))
+        echo "Waiting for $db_name to come online (attempt $j/12)..."
+        sleep 5s
+    done
+    echo "Warning: $db_name did not come online within 60 seconds."
+    return 1
+}
+
+wait_for_db "$cms_db"
+wait_for_db "$commerce_db"
+
 # Improved login check
 # check_login_exists() {
 #    local username=$1

@@ -2,6 +2,7 @@ using EPiServer.Applications;
 using EPiServer.Enterprise;
 using EPiServer.Logging;
 using EPiServer.Security;
+using EPiServer.Shell.Security;
 using Foundation.Infrastructure.Cms.Settings;
 using Mediachase.Commerce.Catalog.ImportExport;
 using Mediachase.Search;
@@ -63,6 +64,7 @@ namespace Foundation.Infrastructure
         public async Task InitializeAsync(HttpContext httpContext)
         {
             await InstallDefaultContent(httpContext);
+            await ProvisionAdminUser(httpContext);
             _settingsService.InitializeSettings();
         }
 
@@ -216,6 +218,40 @@ namespace Foundation.Infrastructure
                 cmd.ExecuteNonQuery();
             }
             catch { }
+        }
+
+        private async Task ProvisionAdminUser(HttpContext context)
+        {
+            try
+            {
+                var userProvider = context.RequestServices.GetRequiredService<UIUserProvider>();
+                var roleProvider = context.RequestServices.GetRequiredService<UIRoleProvider>();
+
+                string[] roles = ["Administrators", "WebAdmins", "WebEditors", "CmsAdmins", "CmsEditors"];
+                foreach (var role in roles)
+                {
+                    if (!await roleProvider.RoleExistsAsync(role))
+                        await roleProvider.CreateRoleAsync(role);
+                }
+
+                const string adminEmail = "admin@example.com";
+                var existing = await userProvider.GetUserAsync(adminEmail);
+                if (existing == null)
+                {
+                    var result = await userProvider.CreateUserAsync(adminEmail, "Episerver123!", adminEmail, null, null, true);
+                    if (result.Status != UIUserCreateStatus.Success)
+                    {
+                        LogManager.GetLogger().Error($"Failed to create admin user: {result.Status}");
+                        return;
+                    }
+                }
+
+                await roleProvider.AddUserToRolesAsync(adminEmail, roles);
+            }
+            catch (Exception ex)
+            {
+                LogManager.GetLogger().Error("Admin user provisioning failed", ex);
+            }
         }
 
         public bool ImportEpiserverContent(Stream stream, ContentReference destinationRoot)

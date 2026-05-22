@@ -50,7 +50,7 @@ namespace Foundation.Features.Search
         private readonly IContentLoader _contentLoader;
         private readonly IProductService _productService;
         private readonly UrlResolver _urlResolver;
-        private readonly IGraphContentClient _graphClient;
+        private readonly IGraphContentClient? _graphClient;
         private readonly ILogger<SearchService> _logger;
 
         public SearchService(
@@ -64,8 +64,8 @@ namespace Foundation.Features.Search
             IContentLoader contentLoader,
             IProductService productService,
             UrlResolver urlResolver,
-            IGraphContentClient graphClient,
-            ILogger<SearchService> logger)
+            ILogger<SearchService> logger,
+            IGraphContentClient? graphClient = null)
         {
             _currentMarket = currentMarket;
             _currencyService = currencyService;

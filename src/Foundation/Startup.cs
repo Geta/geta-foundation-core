@@ -170,11 +170,16 @@ namespace Foundation
             });
 
             // Phase 4: Optimizely Graph — replaces EPiServer.Find.
-            // Credentials are read automatically from Optimizely:ContentGraph in appsettings.json.
-            services.AddContentGraph(_ => { });
-            // Graph query client — allows injecting IGraphContentClient into services (e.g. SearchService).
-            services.AddGraphContentClient();
-            // Content Manager UI (requires Graph to be registered first).
+            // Only register Graph when credentials are configured; without them the SDK
+            // crashes during initialization (NullReferenceException in ContentTypeIndexer,
+            // "QueryOptions.Secret is missing" in JwtPreviewTokenService).
+            var graphAppKey = _configuration["Optimizely:ContentGraph:AppKey"];
+            var graphSecret = _configuration["Optimizely:ContentGraph:Secret"];
+            if (!string.IsNullOrEmpty(graphAppKey) && !string.IsNullOrEmpty(graphSecret))
+            {
+                services.AddContentGraph(_ => { });
+                services.AddGraphContentClient();
+            }
             services.AddContentManager();
 
             // Add AdvancedReviews
