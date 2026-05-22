@@ -107,13 +107,13 @@ namespace Foundation.Features.Checkout.Services
             return validationIssues;
         }
 
-        public string DefaultCartName => "Default" + SiteDefinition.Current.StartPage.ID;
+        public string DefaultCartName => "Default" + (SiteDefinition.Current?.StartPage?.ID ?? 0);
 
-        public string DefaultWishListName => "WishList" + SiteDefinition.Current.StartPage.ID;
+        public string DefaultWishListName => "WishList" + (SiteDefinition.Current?.StartPage?.ID ?? 0);
 
-        public string DefaultSharedCartName => "Shared" + SiteDefinition.Current.StartPage.ID;
+        public string DefaultSharedCartName => "Shared" + (SiteDefinition.Current?.StartPage?.ID ?? 0);
 
-        public string DefaultOrderPadName => "OrderPad" + SiteDefinition.Current.StartPage.ID;
+        public string DefaultOrderPadName => "OrderPad" + (SiteDefinition.Current?.StartPage?.ID ?? 0);
 
         public void RecreateLineItemsBasedOnShipments(ICart cart, IEnumerable<CartItemViewModel> cartItems, IEnumerable<AddressModel> addresses)
         {

@@ -18,7 +18,11 @@
                 <div class="navigation__logo @(Model.LayoutSettings.HeaderMenuStyle == "LeftLogo" ? "flex-start" : "flex-center")"
                      style="@(Model.LayoutSettings.HeaderMenuStyle == "LeftLogo" ? "order: -1; width: auto;" : "")">
                     <a href="/">
-                        @if (Html.IsInEditMode())
+                        @if (ContentReference.IsNullOrEmpty(Model.LayoutSettings?.SiteLogo))
+                        {
+                            <span>Foundation</span>
+                        }
+                        else if (Html.IsInEditMode())
                         {
                             <div @Html.EditAttributes(x => x.LayoutSettings.SiteLogo)>
                                 <img class="img-fluid" src="@UrlResolver.Current.GetUrl(Model.LayoutSettings.SiteLogo, null, new VirtualPathArguments() { ContextMode = ContextMode.Default })" />

@@ -17,7 +17,7 @@ namespace Foundation.Infrastructure.Helpers
         private static readonly Lazy<ISettingsService> _settingsService = new Lazy<ISettingsService>(() => ServiceLocator.Current.GetInstance<ISettingsService>());
         private static readonly Lazy<IContentLanguageAccessor> _cultureAccessor = new Lazy<IContentLanguageAccessor>(() => ServiceLocator.Current.GetInstance<IContentLanguageAccessor>());
 
-        public static LayoutSettings GetLayoutSettings(this IHtmlHelper helper) => _settingsService.Value.GetSiteSettings<LayoutSettings>();
+        public static LayoutSettings GetLayoutSettings(this IHtmlHelper helper) => _settingsService.Value.GetSiteSettings<LayoutSettings>() ?? new LayoutSettings();
         public static IHtmlContent RenderOpenGraphMetaData(this IHtmlHelper helper, IContentViewModel<IContent> contentViewModel)
         {
             var metaTitle = (contentViewModel.CurrentContent as FoundationPageData)?.MetaTitle ?? contentViewModel.CurrentContent.Name;
@@ -118,7 +118,7 @@ namespace Foundation.Infrastructure.Helpers
                 return "https://via.placeholder.com/150";
             }
             var startPage = _contentLoader.Value.Get<HomePage>(ContentReference.StartPage);
-            var siteUrl = SiteDefinition.Current.SiteUrl;
+            var siteUrl = SiteDefinition.Current?.SiteUrl ?? new Uri("https://localhost");
             var url = new Uri(siteUrl, UrlResolver.Current.GetUrl(layoutSettings.SiteLogo));
 
             return url.ToString();
@@ -126,7 +126,7 @@ namespace Foundation.Infrastructure.Helpers
 
         private static string GetUrl(ContentReference content)
         {
-            var siteUrl = SiteDefinition.Current.SiteUrl;
+            var siteUrl = SiteDefinition.Current?.SiteUrl ?? new Uri("https://localhost");
             var url = new Uri(siteUrl, UrlResolver.Current.GetUrl(content));
 
             return url.ToString();

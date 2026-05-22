@@ -73,9 +73,12 @@ namespace Foundation.Features.Header
             var contact = _customerService.GetCurrentContact();
             var isBookmarked = IsBookmarked(content);
             var viewModel = CreateViewModel(content, home, contact, isBookmarked);
-            AddCommerceComponents(contact, viewModel);
+            try { AddCommerceComponents(contact, viewModel); } catch { }
+            viewModel.MiniCart ??= new MiniCartViewModel();
+            viewModel.WishListMiniCart ??= new MiniWishlistViewModel();
+            viewModel.SharedMiniCart ??= new MiniCartViewModel();
             AddAnonymousComponents(home, viewModel);
-            AddMyAccountMenu(home, viewModel);
+            try { AddMyAccountMenu(home, viewModel); } catch { }
             viewModel.LargeHeaderMenu = layoutSettings.LargeHeaderMenu;
             viewModel.ShowCommerceControls = layoutSettings.ShowCommerceHeaderComponents;
             viewModel.DemoUsers = GetDemoUsers(layoutSettings.ShowCommerceHeaderComponents);

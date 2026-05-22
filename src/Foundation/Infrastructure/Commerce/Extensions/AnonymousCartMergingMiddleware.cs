@@ -18,7 +18,7 @@ namespace Infrastructure.Commerce.Extensions
         {
             if (context.User.Identity != null && context.User.Identity.IsAuthenticated)
             {
-                var anonymousId = context.Features.Get<IAnonymousIdFeature>().AnonymousId;
+                var anonymousId = context.Features.Get<IAnonymousIdFeature>()?.AnonymousId;
 
                 if (!string.IsNullOrWhiteSpace(anonymousId))
                 {
@@ -26,20 +26,23 @@ namespace Infrastructure.Commerce.Extensions
                     var marketService = ServiceLocator.Current.GetInstance<IMarketService>();
 
                     var currentMarket = _currentMarket.GetCurrentMarket();
-                    var cart = orderRepository.LoadCart<ICart>(new Guid(anonymousId), DefaultCartName, currentMarket.MarketId);
-
-                    if (cart != null && cart.GetAllLineItems().ToList().Count > 0)
+                    if (currentMarket != null && SiteDefinition.Current?.StartPage != null)
                     {
-                        cart.MarketId = currentMarket.MarketId;
-                        orderRepository.Save(cart);
+                        var cart = orderRepository.LoadCart<ICart>(new Guid(anonymousId), DefaultCartName, currentMarket.MarketId);
 
-                        var profileMigrator = ServiceLocator.Current.GetInstance<IProfileMigrator>();
-                        profileMigrator.MigrateCarts(new Guid(anonymousId));
+                        if (cart != null && cart.GetAllLineItems().ToList().Count > 0)
+                        {
+                            cart.MarketId = currentMarket.MarketId;
+                            orderRepository.Save(cart);
+
+                            var profileMigrator = ServiceLocator.Current.GetInstance<IProfileMigrator>();
+                            profileMigrator.MigrateCarts(new Guid(anonymousId));
+                        }
                     }
                 }
             }
             await _next(context);
         }
-        public string DefaultCartName => "Default" + SiteDefinition.Current.StartPage.ID;
+        public string DefaultCartName => "Default" + (SiteDefinition.Current?.StartPage?.ID ?? 0);
     }
 }

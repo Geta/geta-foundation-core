@@ -60,11 +60,14 @@ namespace Foundation.Features.Shared
         {
             get
             {
-                //See if there's a schema data mapper for this content type and, if so, generate some schema markup
-                if (ServiceLocator.Current.TryGetExistingInstance(out ISchemaDataMapper<TContent> mapper))
+                try
                 {
-                    return new HtmlString($"<script type=\"application/ld+json\">{mapper.Map(CurrentContent).ToHtmlEscapedString()}</script>");
+                    if (ServiceLocator.Current.TryGetExistingInstance(out ISchemaDataMapper<TContent> mapper))
+                    {
+                        return new HtmlString($"<script type=\"application/ld+json\">{mapper.Map(CurrentContent).ToHtmlEscapedString()}</script>");
+                    }
                 }
+                catch { }
                 return new HtmlString(string.Empty);
             }
         }

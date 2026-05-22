@@ -18,7 +18,11 @@
                 </div>
                 <div class="mobile-navigation__item" style="@(Model.LayoutSettings.HeaderMenuStyle == "LeftLogo" ? "order: -1" : "")">
                     <a href="/" class="mobile-navigation__logo">
-                        @if (Html.IsInEditMode())
+                        @if (ContentReference.IsNullOrEmpty(Model.LayoutSettings?.SiteLogo))
+                        {
+                            <span>Foundation</span>
+                        }
+                        else if (Html.IsInEditMode())
                         {
                             <!-- In Edit Mode -->
                             <div @Html.EditAttributes(x => x.LayoutSettings.SiteLogo)>
