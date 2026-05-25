@@ -170,16 +170,11 @@ namespace Foundation
             });
 
             // Phase 4: Optimizely Graph — replaces EPiServer.Find.
-            // Only register Graph when credentials are configured; without them the SDK
-            // crashes during initialization (NullReferenceException in ContentTypeIndexer,
-            // "QueryOptions.Secret is missing" in JwtPreviewTokenService).
-            var graphAppKey = _configuration["Optimizely:ContentGraph:AppKey"];
-            var graphSecret = _configuration["Optimizely:ContentGraph:Secret"];
-            if (!string.IsNullOrEmpty(graphAppKey) && !string.IsNullOrEmpty(graphSecret))
-            {
-                services.AddContentGraph(_ => { });
-                services.AddGraphContentClient();
-            }
+            // Always register Graph services — CMS and Content Manager depend on them.
+            // With empty credentials the SDK skips schema sync gracefully.
+            // Real credentials come from appsettings.Development.json (gitignored).
+            services.AddContentGraph(_ => { });
+            services.AddGraphContentClient();
             services.AddContentManager();
 
             // Add AdvancedReviews

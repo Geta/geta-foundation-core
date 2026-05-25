@@ -26,12 +26,11 @@ public static class Extensions
 
         services.AddServiceDiscovery();
 
-        // ConfigureHttpClientDefaults intentionally removed.
-        // It applied service discovery and resilience to ALL HttpClients globally,
-        // including the Optimizely Graph SDK's named clients, which broke their
-        // Basic Auth and added duplicate resilience handlers.
-        // Aspire service discovery for internal services (SQL Server etc.) works
-        // via connection string injection, not HttpClient service discovery.
+        services.ConfigureHttpClientDefaults(http =>
+        {
+            http.AddStandardResilienceHandler();
+            http.AddServiceDiscovery();
+        });
 
         // Uncomment the following to restrict the allowed schemes for service discovery.
         // builder.Services.Configure<ServiceDiscoveryOptions>(options =>

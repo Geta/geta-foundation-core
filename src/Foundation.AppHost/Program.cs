@@ -72,9 +72,20 @@ var buildConfiguration =
 
 RunProcess("dotnet", $"build -c {buildConfiguration}", projectDirectoryPath);
 
+var graphConfig = new ConfigurationBuilder()
+    .SetBasePath(Path.GetFullPath(projectDirectoryPath))
+    .AddJsonFile("appsettings.json", optional: true)
+    .AddJsonFile("appsettings.Development.json", optional: true)
+    .Build()
+    .GetSection("Optimizely:ContentGraph");
+
 var project = builder.AddProject(config.WebName, csprojPath)
     .WithEnvironment("ConnectionStrings__EPiServerDB", cmsDatabase.Resource.ConnectionStringExpression)
     .WithEnvironment("ConnectionStrings__EcfSqlConnection", commerceDatabase.Resource.ConnectionStringExpression)
+    .WithEnvironment("Optimizely__ContentGraph__GatewayAddress", graphConfig["GatewayAddress"] ?? "https://cg.optimizely.com")
+    .WithEnvironment("Optimizely__ContentGraph__AppKey", graphConfig["AppKey"] ?? "")
+    .WithEnvironment("Optimizely__ContentGraph__Secret", graphConfig["Secret"] ?? "")
+    .WithEnvironment("Optimizely__ContentGraph__SingleKey", graphConfig["SingleKey"] ?? "")
     .WaitFor(sqlserver);
 
 if (config.WebPort != null)

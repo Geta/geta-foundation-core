@@ -212,9 +212,10 @@ namespace Foundation.Infrastructure
                     INSERT INTO tblContentAccess (fkContentID, [Name], IsRole, AccessMask) VALUES
                     (1, 'Administrators', 1, 63),
                     (1, 'WebAdmins', 1, 63),
-                    (1, 'WebEditors', 1, 31),
+                    (1, 'WebEditors', 1, 63),
                     (1, 'CmsAdmins', 1, 63),
-                    (1, 'CmsEditors', 1, 31)";
+                    (1, 'CmsEditors', 1, 63),
+                    (1, 'admin@example.com', 0, 63)";
                 cmd.ExecuteNonQuery();
             }
             catch { }
