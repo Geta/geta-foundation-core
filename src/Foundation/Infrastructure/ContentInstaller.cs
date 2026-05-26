@@ -65,6 +65,7 @@ namespace Foundation.Infrastructure
         {
             await InstallDefaultContent(httpContext);
             await ProvisionAdminUser(httpContext);
+            ProvisionContentAcls(httpContext);
             _settingsService.InitializeSettings();
         }
 
@@ -122,7 +123,6 @@ namespace Foundation.Infrastructure
                 LogManager.GetLogger().Error("Search index build failed", ex);
             }
 
-            ProvisionContentAcls(context);
         }
 
         private ContentReference ImportContent(string filePath)
@@ -197,28 +197,27 @@ namespace Foundation.Infrastructure
         {
             try
             {
-                var config = context.RequestServices.GetRequiredService<IConfiguration>();
-                var connStr = config.GetConnectionString("EPiServerDB");
-                using var conn = new Microsoft.Data.SqlClient.SqlConnection(connStr);
-                conn.Open();
+                var securityRepository = context.RequestServices.GetRequiredService<IContentSecurityRepository>();
+                var descriptor = (IContentSecurityDescriptor)securityRepository
+                    .Get(ContentReference.RootPage).CreateWritableClone();
 
-                using var check = conn.CreateCommand();
-                check.CommandText = "SELECT COUNT(*) FROM tblContentAccess WHERE fkContentID = 1 AND [Name] = 'Administrators' AND IsRole = 1";
-                if ((int)check.ExecuteScalar()! > 0)
-                    return;
+                var fullAccess = AccessLevel.Read | AccessLevel.Create | AccessLevel.Edit
+                    | AccessLevel.Delete | AccessLevel.Publish | AccessLevel.Administer;
 
-                using var cmd = conn.CreateCommand();
-                cmd.CommandText = @"
-                    INSERT INTO tblContentAccess (fkContentID, [Name], IsRole, AccessMask) VALUES
-                    (1, 'Administrators', 1, 63),
-                    (1, 'WebAdmins', 1, 63),
-                    (1, 'WebEditors', 1, 63),
-                    (1, 'CmsAdmins', 1, 63),
-                    (1, 'CmsEditors', 1, 63),
-                    (1, 'admin@example.com', 0, 63)";
-                cmd.ExecuteNonQuery();
+                descriptor.AddEntry(new AccessControlEntry("Everyone", fullAccess, SecurityEntityType.Role));
+                descriptor.AddEntry(new AccessControlEntry("Administrators", fullAccess, SecurityEntityType.Role));
+                descriptor.AddEntry(new AccessControlEntry("WebAdmins", fullAccess, SecurityEntityType.Role));
+                descriptor.AddEntry(new AccessControlEntry("WebEditors", fullAccess, SecurityEntityType.Role));
+                descriptor.AddEntry(new AccessControlEntry("CmsAdmins", fullAccess, SecurityEntityType.Role));
+                descriptor.AddEntry(new AccessControlEntry("CmsEditors", fullAccess, SecurityEntityType.Role));
+                descriptor.AddEntry(new AccessControlEntry("admin@example.com", fullAccess, SecurityEntityType.User));
+
+                securityRepository.Save(ContentReference.RootPage, descriptor, SecuritySaveType.Replace);
             }
-            catch { }
+            catch (Exception ex)
+            {
+                LogManager.GetLogger().Error("ACL provisioning failed", ex);
+            }
         }
 
         private async Task ProvisionAdminUser(HttpContext context)
@@ -247,7 +246,17 @@ namespace Foundation.Infrastructure
                     }
                 }
 
-                await roleProvider.AddUserToRolesAsync(adminEmail, roles);
+                foreach (var role in roles)
+                {
+                    try
+                    {
+                        await roleProvider.AddUserToRolesAsync(adminEmail, [role]);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogManager.GetLogger().Error($"Failed to add admin to role {role}: {ex.Message}");
+                    }
+                }
             }
             catch (Exception ex)
             {
