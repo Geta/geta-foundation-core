@@ -69,12 +69,25 @@ namespace Foundation.Infrastructure
             _settingsService.InitializeSettings();
         }
 
+        private static string ResolveAppDataPath(string contentRootPath)
+        {
+            var candidate = Path.Combine(contentRootPath, "App_Data");
+            if (Directory.Exists(candidate))
+                return candidate;
+
+            candidate = Path.Combine(AppContext.BaseDirectory, "App_Data");
+            if (Directory.Exists(candidate))
+                return candidate;
+
+            return Path.Combine(contentRootPath, "App_Data");
+        }
+
         private async Task InstallDefaultContent(HttpContext context)
         {
             if (_siteDefinitionRepository.List().Any())
                 return;
 
-            var appDataPath = Path.Combine(_webHostEnvironment.ContentRootPath, "App_Data");
+            var appDataPath = ResolveAppDataPath(_webHostEnvironment.ContentRootPath);
             var episerverdataPath = Path.Combine(appDataPath, "foundation-cms13.episerverdata");
             if (!File.Exists(episerverdataPath))
                 episerverdataPath = Path.Combine(appDataPath, "foundation.episerverdata");
