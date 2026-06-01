@@ -92,7 +92,9 @@ namespace Foundation.Infrastructure.Cms.Settings
             if (!siteId.HasValue)
             {
                 siteId = ResolveSiteId();
-                if (siteId == Guid.Empty)
+                // CMS 13: site definition may be stored with Guid.Empty as its Id (if Id was not set at creation).
+                // Don't bail here — SiteSettings is keyed by the same Guid.Empty string used at write time.
+                if (siteId == null)
                 {
                     return default;
                 }
@@ -235,6 +237,19 @@ namespace Foundation.Infrastructure.Cms.Settings
         {
             var root = _contentRepository.GetItems(_contentRootService.List(), new LoaderOptions())
                  .FirstOrDefault(x => x.ContentGuid == SettingsFolder.SettingsRootGuid);
+
+            // CMS 13: tblContentSource (content root registry) may be empty; fall back to direct GUID lookup.
+            if (root == null)
+            {
+                try
+                {
+                    root = _contentRepository.Get<IContent>(SettingsFolder.SettingsRootGuid);
+                }
+                catch (Exception ex)
+                {
+                    _log.Error($"[Settings] GUID fallback failed: {ex.Message}", exception: ex);
+                }
+            }
 
             if (root == null)
             {
@@ -395,9 +410,10 @@ namespace Foundation.Infrastructure.Cms.Settings
             var site = _siteDefinitionResolver.GetByHostname(request.Host.Host, true, out var hostname);
             if (site == null)
             {
-                return Guid.Empty;
+                // CMS 13: hostname resolution may not match localhost in dev. Fall back to the first registered site.
+                site = _siteDefinitionRepository.List().FirstOrDefault();
             }
-            return site.Id;
+            return site?.Id ?? Guid.Empty;
         }
     }
 }

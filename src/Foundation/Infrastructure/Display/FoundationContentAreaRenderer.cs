@@ -45,7 +45,8 @@ namespace Foundation.Infrastructure.Display
 
         private static string GetTypeSpecificCssClasses(ContentAreaItem contentAreaItem, IContentRepository contentRepository)
         {
-            var content = contentAreaItem.GetContent();
+            // CMS 13: ContentAreaItem.GetContent() removed. Use IContentLoader.Get<IContent> instead.
+            var content = contentRepository.Get<IContent>(contentAreaItem.ContentLink);
             var cssClass = content == null ? String.Empty : content.GetOriginalType().Name.ToLowerInvariant();
 
             var customClassContent = content as ICustomCssInContentArea;

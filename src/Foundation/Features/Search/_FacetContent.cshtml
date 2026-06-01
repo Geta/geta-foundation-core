@@ -1,4 +1,4 @@
-﻿@using EPiServer.Find
+@* EPiServer.Find removed: @using EPiServer.Find removed. Phase 4 will restore. *@
 @using EPiServer.Shell.Web.Mvc.Html
 @using Foundation.Features.Search
 @using Foundation.Features.Search.Search
@@ -31,22 +31,14 @@
                 }
             }
         </li>
+        @* EPiServer.Find removed: FilterFacet/TermsFacetFor extension methods removed. Phase 4 will restore facet sections. *@
         @if (Model.ContentSearchResult != null && Model.ContentSearchResult.Hits != null)
         {
             <li class="">
                 <span class="selection--cm__sub-label">
-                    <a href="@Model.ContentSearchResult.GetSectionGroupUrl("")"> All (@Model.ContentSearchResult.Hits.FilterFacet("AllSections").Count)</a>
+                    <a href="@Model.ContentSearchResult.GetSectionGroupUrl("")">All</a>
                 </span>
             </li>
-
-            foreach (var sectionGroup in Model.ContentSearchResult.Hits.TermsFacetFor(x => x.SearchSection))
-            {
-                <li class="">
-                    <span class="selection--cm__sub-label">
-                        <a href="@Model.ContentSearchResult.GetSectionGroupUrl(sectionGroup.Term)">@sectionGroup.Term (@sectionGroup.Count)</a>
-                    </span>
-                </li>
-            }
         }
     </ul>
 </div>

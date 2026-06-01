@@ -1,6 +1,7 @@
 ﻿using Foundation.Features.CatalogContent.Product;
 using Foundation.Infrastructure.Cms;
 using Schema.NET;
+using System.Text.RegularExpressions;
 
 namespace Foundation.Infrastructure.SchemaMarkup
 {
@@ -69,7 +70,8 @@ namespace Foundation.Infrastructure.SchemaMarkup
             {
                 Name = content.DisplayName,
                 Image = content.CommerceMediaCollection?.Select(x => x.AssetLink.GetUri(content.Language.Name, true)).ToList(),
-                Description = EPiServer.Core.Html.TextIndexer.StripHtml(content.LongDescription?.ToHtmlString(), int.MaxValue),
+                // CMS 13 removed: EPiServer.Core.Html.TextIndexer removed. Strip HTML manually.
+                Description = StripHtml(content.LongDescription?.ToHtmlString()),
                 Sku = variants.Select(x => x.Code).ToList(),
                 Brand = new Brand
                 {
@@ -77,6 +79,13 @@ namespace Foundation.Infrastructure.SchemaMarkup
                 },
                 Offers = offer
             };
+        }
+        // CMS 13 removed: TextIndexer.StripHtml removed. Replacement using Regex.
+        private static string StripHtml(string html)
+        {
+            if (string.IsNullOrEmpty(html)) return string.Empty;
+            var stripped = Regex.Replace(html, "<[^>]+>", string.Empty);
+            return System.Net.WebUtility.HtmlDecode(stripped);
         }
     }
 }

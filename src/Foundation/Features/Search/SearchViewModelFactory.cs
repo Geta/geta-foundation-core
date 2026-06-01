@@ -1,8 +1,5 @@
-using EPiServer.Find;
-using EPiServer.Find.Cms;
-//using EPiServer.Find.Commerce;
-using EPiServer.Find.Framework.BestBets;
-using EPiServer.Framework.Cache;
+// EPiServer.Find removed: IClient (Find) dependency removed. GetCategoriesFilter uses ContentLoader instead.
+// Phase 4 will restore full implementation using Optimizely Graph.
 using Foundation.Features.CatalogContent;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,16 +23,12 @@ namespace Foundation.Features.Search
         private readonly ReferenceConverter _referenceConverter;
         private readonly UrlResolver _urlResolver;
         private readonly IHttpContextAccessor _httpContextAccessor;
-        private readonly IClient _findClient;
-        private readonly ISynchronizedObjectInstanceCache _synchronizedObjectInstanceCache;
 
         public SearchViewModelFactory(LocalizationService localizationService, ISearchService searchService,
             IContentLoader contentLoader,
             ReferenceConverter referenceConverter,
             UrlResolver urlResolver,
-            IHttpContextAccessor httpContextAccessor,
-            IClient findClient,
-            ISynchronizedObjectInstanceCache synchronizedObjectInstanceCache)
+            IHttpContextAccessor httpContextAccessor)
         {
             _searchService = searchService;
             _contentLoader = contentLoader;
@@ -43,8 +36,6 @@ namespace Foundation.Features.Search
             _urlResolver = urlResolver;
             _httpContextAccessor = httpContextAccessor;
             _localizationService = localizationService;
-            _findClient = findClient;
-            _synchronizedObjectInstanceCache = synchronizedObjectInstanceCache;
         }
 
         public virtual SearchViewModel<TContent> Create<TContent>(TContent currentContent,
@@ -91,8 +82,8 @@ namespace Foundation.Features.Search
 
         private CategoriesFilterViewModel GetCategoriesFilter(IContent currentContent, string query)
         {
-            var bestBets = new BestBetRepository(_synchronizedObjectInstanceCache).List().Where(i => i.PhraseCriterion.Phrase.CompareTo(query) == 0);
-            //var ownStyleBestBets = bestBets.Where(i => i.BestBetSelector is CommerceBestBetSelector && i.HasOwnStyle);
+            // EPiServer.Find removed: category filter now uses ContentLoader instead of Find index.
+            // Phase 4 will restore full Find/Graph implementation.
             var catalogId = 0;
             var node = currentContent as NodeContent;
             if (node != null)
@@ -108,10 +99,7 @@ namespace Foundation.Features.Search
             }
 
             var viewModel = new CategoriesFilterViewModel();
-            var nodes = _findClient.Search<NodeContent>()
-                .Filter(x => x.ParentLink.ID.Match(catalog.ContentLink.ID))
-                .FilterForVisitor()
-                .GetContentResult();
+            var nodes = _contentLoader.GetChildren<NodeContent>(catalog.ContentLink);
 
             foreach (var nodeContent in nodes)
             {
@@ -120,39 +108,38 @@ namespace Foundation.Features.Search
                     DisplayName = nodeContent.DisplayName,
                     Url = _urlResolver.GetUrl(nodeContent.ContentLink),
                     IsActive = currentContent != null && currentContent.ContentLink == nodeContent.ContentLink,
-                    IsBestBet = false//ownStyleBestBets.Any(x => ((CommerceBestBetSelector)x.BestBetSelector).ContentLink.ID == nodeContent.ContentLink.ID)
-                };
-                viewModel.Categories.Add(nodeFilter);
-
-                GetChildrenNode(currentContent, nodeContent, nodeFilter, null);
-            }
-            return viewModel;
-        }
-
-        private void GetChildrenNode(IContent currentContent, NodeContent node, CategoryFilter nodeFilter, IEnumerable<BestBetBase> ownStyleBestBets)
-        {
-            var nodeChildrenOfNode = _findClient.Search<NodeContent>()
-                .Filter(x => x.ParentLink.ID.Match(node.ContentLink.ID))
-                .FilterForVisitor()
-                .GetContentResult();
-            foreach (var nodeChildOfChild in nodeChildrenOfNode)
-            {
-                var nodeChildOfChildFilter = new CategoryFilter
-                {
-                    DisplayName = nodeChildOfChild.DisplayName,
-                    Url = _urlResolver.GetUrl(nodeChildOfChild.ContentLink),
-                    IsActive = currentContent != null && currentContent.ContentLink == nodeChildOfChild.ContentLink,
-                    IsBestBet = false//ownStyleBestBets.Any(x => ((CommerceBestBetSelector)x.BestBetSelector).ContentLink.ID == nodeChildOfChild.ContentLink.ID)
+                    IsBestBet = false
                 };
 
-                nodeFilter.Children.Add(nodeChildOfChildFilter);
-                if (nodeChildOfChildFilter.IsActive)
+                // Load children (e.g. Mens Shoes, Mens Jackets)
+                foreach (var childNode in _contentLoader.GetChildren<NodeContent>(nodeContent.ContentLink))
                 {
-                    nodeFilter.IsActive = nodeFilter.IsActive = true;
+                    var childFilter = new CategoryFilter
+                    {
+                        DisplayName = childNode.DisplayName,
+                        Url = _urlResolver.GetUrl(childNode.ContentLink),
+                        IsActive = currentContent != null && currentContent.ContentLink == childNode.ContentLink,
+                        IsBestBet = false
+                    };
+
+                    // Load grandchildren (third level)
+                    foreach (var grandchildNode in _contentLoader.GetChildren<NodeContent>(childNode.ContentLink))
+                    {
+                        childFilter.Children.Add(new CategoryFilter
+                        {
+                            DisplayName = grandchildNode.DisplayName,
+                            Url = _urlResolver.GetUrl(grandchildNode.ContentLink),
+                            IsActive = currentContent != null && currentContent.ContentLink == grandchildNode.ContentLink,
+                            IsBestBet = false
+                        });
+                    }
+
+                    nodeFilter.Children.Add(childFilter);
                 }
 
-                GetChildrenNode(currentContent, nodeChildOfChild, nodeChildOfChildFilter, ownStyleBestBets);
+                viewModel.Categories.Add(nodeFilter);
             }
+            return viewModel;
         }
     }
 }

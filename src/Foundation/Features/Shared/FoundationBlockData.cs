@@ -1,14 +1,7 @@
-using Geta.Optimizely.Categories;
-using Geta.Optimizely.Categories.DataAnnotations;
-
 namespace Foundation.Features.Shared
 {
-    public abstract class FoundationBlockData : BlockData, ICategorizableContent
+    public abstract class FoundationBlockData : BlockData
     {
-        [Categories]
-        [Display(Description = "Categories associated with this content", GroupName = SystemTabNames.PageHeader, Order = 0)]
-        public virtual IList<ContentReference> Categories { get; set; }
-
         [SelectOne(SelectionFactoryType = typeof(PaddingSelectionFactory))]
         [Display(Name = "Padding", GroupName = TabNames.BlockStyling, Order = 1)]
         public virtual string Padding

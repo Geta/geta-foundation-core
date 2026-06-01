@@ -22,8 +22,9 @@ namespace Foundation.Features.Blocks.VimeoBlock
         [Display(Name = "Cover image", GroupName = SystemTabNames.Content, Order = 20)]
         public virtual ContentReference CoverImage { get; set; }
 
+        // CMS 13: [Ignore] required to prevent model scanner from trying to register computed getter-only property.
+        [Ignore]
         [ScaffoldColumn(false)]
-        [Display(Name = "Vimeo video", GroupName = SystemTabNames.Content, Order = 30)]
         public virtual VimeoUrl VimeoVideo
         {
             get

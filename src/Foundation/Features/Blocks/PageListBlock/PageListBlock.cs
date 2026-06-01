@@ -1,7 +1,6 @@
 using EPiServer.Filters;
 using EPiServer.Validation;
 using Foundation.Features.Folder;
-using Geta.Optimizely.Categories.DataAnnotations;
 using Newtonsoft.Json;
 
 namespace Foundation.Features.Blocks.PageListBlock
@@ -40,7 +39,7 @@ namespace Foundation.Features.Blocks.PageListBlock
         [Display(Name = "Filter by page type", GroupName = SystemTabNames.Content, Order = 70)]
         public virtual PageType PageTypeFilter { get; set; }
 
-        [Categories]
+        // [Categories] attribute removed: Geta.Optimizely.Categories has no CMS 13 version.
         [Display(Name = "Filter by category",
             Description = "Categories to filter the list on",
             GroupName = SystemTabNames.Content,

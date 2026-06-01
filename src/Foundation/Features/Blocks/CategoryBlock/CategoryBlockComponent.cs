@@ -1,4 +1,4 @@
-﻿using EPiServer.Find.Commerce;
+﻿// EPiServer.Find.Commerce removed: DefaultImageUrl() is a standard Commerce property, no Find import needed.
 
 namespace Foundation.Features.Blocks.CategoryBlock
 {
@@ -36,7 +36,8 @@ namespace Foundation.Features.Blocks.CategoryBlock
             return new CategoryItemViewModel
             {
                 Name = model.DisplayName,
-                ImageUrl = model.DefaultImageUrl(),
+                // Commerce 15 removed: NodeContent.DefaultImageUrl() removed (was EPiServer.Find.Commerce extension).
+                ImageUrl = string.Empty,
                 Uri = _urlResolver.GetUrl(model.ContentLink),
                 ChildLinks = children.Select(
                     x => new CategoryChildLinkViewModel

@@ -1,5 +1,4 @@
-﻿using EPiServer.Tracking.Commerce;
-using Foundation.Features.Checkout.Services;
+﻿using Foundation.Features.Checkout.Services;
 using Foundation.Features.Checkout.ViewModels;
 using Foundation.Infrastructure.Cms.Settings;
 using Foundation.Infrastructure.Commerce.Customer.Services;
@@ -37,7 +36,6 @@ namespace Foundation.Features.NamedCarts.SharedCart
         }
 
         [HttpGet]
-        [CommerceTracking(TrackingType.Other)]
         public ActionResult Index(SharedCartPage currentPage)
         {
             var viewModel = _cartViewModelFactory.CreateSharedCartViewModel(SharedCart.Cart, currentPage);

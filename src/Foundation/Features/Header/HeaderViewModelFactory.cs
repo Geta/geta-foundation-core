@@ -1,7 +1,8 @@
 ﻿using EPiServer.Data;
 using EPiServer.Filters;
-using EPiServer.Find.Helpers;
+// EPiServer.Find.Helpers removed: no CMS 13 version.
 using EPiServer.Framework.Cache;
+using Microsoft.AspNetCore.Http;
 using EPiServer.SpecializedProperties;
 using Foundation.Features.Blocks.MenuItemBlock;
 using Foundation.Features.Checkout.Services;
@@ -32,6 +33,8 @@ namespace Foundation.Features.Header
         private readonly ISettingsService _settingsService;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IContextModeResolver _contextModeResolver;
+        // CMS 13: CacheManager obsolete. Use ISynchronizedObjectInstanceCache directly.
+        private readonly ISynchronizedObjectInstanceCache _objectInstanceCache;
 
         public HeaderViewModelFactory(LocalizationService localizationService,
             ICustomerService customerService,
@@ -45,7 +48,8 @@ namespace Foundation.Features.Header
             IDatabaseMode databaseMode,
             ISettingsService settingsService,
             IHttpContextAccessor httpContextAccessor,
-            IContextModeResolver contextModeResolver)
+            IContextModeResolver contextModeResolver,
+            ISynchronizedObjectInstanceCache objectInstanceCache)
         {
             _localizationService = localizationService;
             _customerService = customerService;
@@ -60,31 +64,32 @@ namespace Foundation.Features.Header
             _settingsService = settingsService;
             _httpContextAccessor = httpContextAccessor;
             _contextModeResolver = contextModeResolver;
+            _objectInstanceCache = objectInstanceCache;
         }
 
         public virtual HeaderViewModel CreateHeaderViewModel(IContent content, HomePage home)
         {
-            var layoutSettings = _settingsService.GetSiteSettings<LayoutSettings>();
+            var layoutSettings = _settingsService.GetSiteSettings<LayoutSettings>() ?? new LayoutSettings();
             var contact = _customerService.GetCurrentContact();
             var isBookmarked = IsBookmarked(content);
             var viewModel = CreateViewModel(content, home, contact, isBookmarked);
             AddCommerceComponents(contact, viewModel);
             AddAnonymousComponents(home, viewModel);
             AddMyAccountMenu(home, viewModel);
-            viewModel.LargeHeaderMenu = layoutSettings?.LargeHeaderMenu ?? true;
-            viewModel.ShowCommerceControls = layoutSettings?.ShowCommerceHeaderComponents ?? true;
-            viewModel.DemoUsers = GetDemoUsers(layoutSettings?.ShowCommerceHeaderComponents ?? true);
+            viewModel.LargeHeaderMenu = layoutSettings.LargeHeaderMenu;
+            viewModel.ShowCommerceControls = layoutSettings.ShowCommerceHeaderComponents;
+            viewModel.DemoUsers = GetDemoUsers(layoutSettings.ShowCommerceHeaderComponents);
             viewModel.LayoutSettings = layoutSettings;
-            viewModel.SearchSettings = _settingsService.GetSiteSettings<SearchSettings>();
-            viewModel.ReferencePageSettings = _settingsService.GetSiteSettings<ReferencePageSettings>();
-            viewModel.LabelSettings = _settingsService.GetSiteSettings<LabelSettings>();
+            viewModel.SearchSettings = _settingsService.GetSiteSettings<SearchSettings>() ?? new SearchSettings();
+            viewModel.ReferencePageSettings = _settingsService.GetSiteSettings<ReferencePageSettings>() ?? new ReferencePageSettings();
+            viewModel.LabelSettings = _settingsService.GetSiteSettings<LabelSettings>() ?? new LabelSettings();
 
             return viewModel;
         }
 
         public virtual HeaderLogoViewModel CreateHeaderLogoViewModel()
         {
-            var layoutSettings = _settingsService.GetSiteSettings<LayoutSettings>();
+            var layoutSettings = _settingsService.GetSiteSettings<LayoutSettings>() ?? new LayoutSettings();
             var viewModel = new HeaderLogoViewModel()
             {
                 LargeHeaderMenu = layoutSettings.LargeHeaderMenu,
@@ -97,7 +102,8 @@ namespace Foundation.Features.Header
 
         public virtual void AddMyAccountMenu(HomePage homePage, HeaderViewModel viewModel)
         {
-            if (HttpContextHelper.Current != null && !_httpContextAccessor.HttpContext.User.Identity.IsAuthenticated)
+            // Commerce 15 removed: HttpContextHelper removed. Use _httpContextAccessor directly.
+            if (!_httpContextAccessor.HttpContext.User.Identity.IsAuthenticated)
             {
                 viewModel.UserLinks = new LinkItemCollection();
                 return;
@@ -140,8 +146,14 @@ namespace Foundation.Features.Header
                     continue;
                 }
 
-                linkItem.Title = linkItem.Text;
-                menuItems.Add(linkItem);
+                var item = new LinkItem
+                {
+                    Href = linkItem.Href,
+                    Text = linkItem.Text,
+                    Title = linkItem.Text,
+                    Target = linkItem.Target
+                };
+                menuItems.Add(item);
             }
 
             var signoutText = _localizationService.GetString("/Header/Account/SignOut", "Sign Out");
@@ -177,7 +189,8 @@ namespace Foundation.Features.Header
             var layoutSettings = _settingsService.GetSiteSettings<LayoutSettings>();
             var referenceSettings = _settingsService.GetSiteSettings<ReferencePageSettings>();
             var filter = new FilterContentForVisitor();
-            menuItems = layoutSettings?.MainMenu?.FilteredItems.Where(x =>
+            // CMS 13: ContentArea.FilteredItems obsolete. Use Items instead.
+            menuItems = layoutSettings?.MainMenu?.Items.Where(x =>
             {
                 var _menuItem = _contentLoader.Get<IContent>(x.ContentLink);
                 MenuItemBlock _menuItemBlock;
@@ -198,7 +211,8 @@ namespace Foundation.Features.Header
                 return true;
             }).Select(x =>
             {
-                var itemCached = CacheManager.Get(x.ContentLink.ID + homeLanguage + ":" + Constant.CacheKeys.MenuItems) as MenuItemViewModel;
+                // CMS 13: CacheManager obsolete. Use ISynchronizedObjectInstanceCache.
+                var itemCached = _objectInstanceCache.Get(x.ContentLink.ID + homeLanguage + ":" + Constant.CacheKeys.MenuItems) as MenuItemViewModel;
                 if (itemCached != null && !_contextModeResolver.CurrentMode.EditOrPreview())
                 {
                     return itemCached;
@@ -241,7 +255,8 @@ namespace Foundation.Features.Header
                         };
 
                         var eviction = new CacheEvictionPolicy(TimeSpan.FromDays(1), CacheTimeoutType.Sliding, keyDependency);
-                        CacheManager.Insert(x.ContentLink.ID + homeLanguage + ":" + Constant.CacheKeys.MenuItems, menuItem, eviction);
+                        // CMS 13: CacheManager obsolete. Use ISynchronizedObjectInstanceCache.
+                        _objectInstanceCache.Insert(x.ContentLink.ID + homeLanguage + ":" + Constant.CacheKeys.MenuItems, menuItem, eviction);
                     }
 
                     return menuItem;
@@ -297,7 +312,8 @@ namespace Foundation.Features.Header
 
         protected virtual void AddAnonymousComponents(HomePage homePage, HeaderViewModel viewModel)
         {
-            if (HttpContextHelper.Current != null && !_httpContextAccessor.HttpContext.User.Identity.IsAuthenticated)
+            // Commerce 15 removed: HttpContextHelper removed. Use _httpContextAccessor directly.
+            if (!_httpContextAccessor.HttpContext.User.Identity.IsAuthenticated)
             {
                 var referenceSettings = _settingsService.GetSiteSettings<ReferencePageSettings>();
                 viewModel.LoginViewModel = new LoginViewModel

@@ -9,7 +9,7 @@ using Foundation.Infrastructure.Cms.Settings;
 using Foundation.Infrastructure.Commerce;
 using Foundation.Infrastructure.Commerce.Customer;
 using Foundation.Infrastructure.Commerce.Customer.Services;
-using Foundation.Infrastructure.Personalization;
+using Mediachase.Commerce.Customers;
 using Mediachase.Commerce.Orders;
 using Mediachase.Commerce.Security;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -24,7 +24,6 @@ namespace Foundation.Features.NamedCarts.DefaultCart
         private CartWithValidationIssues _wishlist;
         private CartWithValidationIssues _sharedcart;
         private readonly IOrderRepository _orderRepository;
-        private readonly ICommerceTrackingService _recommendationService;
         private readonly CartViewModelFactory _cartViewModelFactory;
         private readonly IContentLoader _contentLoader;
         private readonly IContentRouteHelper _contentRouteHelper;
@@ -41,13 +40,13 @@ namespace Foundation.Features.NamedCarts.DefaultCart
         private readonly IPaymentService _paymentService;
         private readonly ICurrentMarket _currentMarket;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IOrderGroupFactory _orderGroupFactory;
 
         private const string b2cMinicart = "/Features/Shared/Views/Header/_HeaderCart.cshtml";
 
         public DefaultCartController(
             ICartService cartService,
             IOrderRepository orderRepository,
-            ICommerceTrackingService recommendationService,
             CartViewModelFactory cartViewModelFactory,
             IContentLoader contentLoader,
             IContentRouteHelper contentRouteHelper,
@@ -63,11 +62,11 @@ namespace Foundation.Features.NamedCarts.DefaultCart
             ISettingsService settingsService,
             IPaymentService paymentService,
             ICurrentMarket currentMarket,
-            IHttpContextAccessor httpContextAccessor)
+            IHttpContextAccessor httpContextAccessor,
+            IOrderGroupFactory orderGroupFactory)
         {
             _cartService = cartService;
             _orderRepository = orderRepository;
-            _recommendationService = recommendationService;
             _cartViewModelFactory = cartViewModelFactory;
             _contentLoader = contentLoader;
             _contentRouteHelper = contentRouteHelper;
@@ -84,6 +83,7 @@ namespace Foundation.Features.NamedCarts.DefaultCart
             _paymentService = paymentService;
             _currentMarket = currentMarket;
             _httpContextAccessor = httpContextAccessor;
+            _orderGroupFactory = orderGroupFactory;
         }
 
         private CartWithValidationIssues CartWithValidationIssues => _cart ?? (_cart = _cartService.LoadCart(_cartService.DefaultCartName, true));
@@ -98,7 +98,7 @@ namespace Foundation.Features.NamedCarts.DefaultCart
 
         [HttpPost]
         [HttpGet]
-        public async Task<ActionResult> Index(CartPage currentPage)
+        public ActionResult Index(CartPage currentPage)
         {
             var messages = string.Empty;
             if (TempData[Constant.Quote.RequestQuoteStatus] != null)
@@ -124,8 +124,6 @@ namespace Foundation.Features.NamedCarts.DefaultCart
 
             var viewModel = _cartViewModelFactory.CreateLargeCartViewModel(CartWithValidationIssues.Cart, currentPage);
             viewModel.Message = messages;
-            var trackingResponse = await _recommendationService.TrackCart(HttpContext, CartWithValidationIssues.Cart);
-            viewModel.Recommendations = trackingResponse.GetCartRecommendations(_referenceConverter);
             return View("LargeCart", viewModel);
         }
 
@@ -149,7 +147,7 @@ namespace Foundation.Features.NamedCarts.DefaultCart
         }
 
         [HttpPost]
-        public async Task<ActionResult> AddToCart([FromBody] RequestParamsToCart param)
+        public ActionResult AddToCart([FromBody] RequestParamsToCart param)
         {
             var warningMessage = string.Empty;
 
@@ -169,7 +167,6 @@ namespace Foundation.Features.NamedCarts.DefaultCart
             if (result.EntriesAddedToCart)
             {
                 _orderRepository.Save(CartWithValidationIssues.Cart);
-                await _recommendationService.TrackCart(HttpContext, CartWithValidationIssues.Cart);
                 if (string.Equals(param.RequestFrom, "axios", StringComparison.OrdinalIgnoreCase))
                 {
                     var product = "";
@@ -212,7 +209,7 @@ namespace Foundation.Features.NamedCarts.DefaultCart
         }
 
         [HttpPost]
-        public async Task<ActionResult> AddAllToCart()
+        public ActionResult AddAllToCart()
         {
             ModelState.Clear();
 
@@ -231,8 +228,6 @@ namespace Foundation.Features.NamedCarts.DefaultCart
             if (entriesAddedToCart)
             {
                 _orderRepository.Save(CartWithValidationIssues.Cart);
-                await _recommendationService.TrackCart(HttpContext, CartWithValidationIssues.Cart);
-
                 return Json(new ChangeCartJsonResult
                 {
                     StatusCode = 1,
@@ -246,7 +241,7 @@ namespace Foundation.Features.NamedCarts.DefaultCart
         }
 
         [HttpPost]
-        public async Task<ActionResult> Subscription([FromBody] RequestParamsToCart param)
+        public ActionResult Subscription([FromBody] RequestParamsToCart param)
         {
             var warningMessage = string.Empty;
 
@@ -273,7 +268,6 @@ namespace Foundation.Features.NamedCarts.DefaultCart
                 }
 
                 _orderRepository.Save(CartWithValidationIssues.Cart);
-                await _recommendationService.TrackCart(HttpContext, CartWithValidationIssues.Cart);
                 return MiniCartDetails();
             }
 
@@ -293,7 +287,7 @@ namespace Foundation.Features.NamedCarts.DefaultCart
         }
 
         [HttpPost]
-        public async Task<ActionResult> BuyNow([FromBody] RequestParamsToCart param)
+        public ActionResult BuyNow([FromBody] RequestParamsToCart param)
         {
             var warningMessage = string.Empty;
 
@@ -319,7 +313,8 @@ namespace Foundation.Features.NamedCarts.DefaultCart
                 return RedirectToCart("The contact is invalid");
             }
 
-            var creditCard = contact.ContactCreditCards.FirstOrDefault();
+            // Commerce 15 removed: ContactCreditCards removed from CustomerContact. Returns empty/null stub.
+            var creditCard = contact.ContactCreditCards().FirstOrDefault();
             if (creditCard == null)
             {
                 return RedirectToCart("There is not any credit card");
@@ -365,17 +360,14 @@ namespace Foundation.Features.NamedCarts.DefaultCart
 
             var totals = _orderGroupCalculator.GetOrderGroupTotals(CartWithValidationIssues.Cart);
             var creditCardPayment = _paymentService.GetPaymentMethodsByMarketIdAndLanguageCode(CartWithValidationIssues.Cart.MarketId.Value, _currentMarket.GetCurrentMarket().DefaultLanguage.Name).FirstOrDefault(x => x.SystemKeyword == "GenericCreditCard");
-            var payment = CartWithValidationIssues.Cart.CreateCardPayment();
+            // Commerce 15 removed: ICart.CreateCardPayment() removed. Use IOrderGroupFactory.CreatePayment().
+            var payment = _orderGroupFactory.CreatePayment(CartWithValidationIssues.Cart);
 
             payment.BillingAddress = paymentAddress;
-            payment.CardType = "Credit card";
+            // Commerce 15 removed: IPayment.CardType, CreditCardNumber, CreditCardSecurityCode, ExpirationMonth, ExpirationYear removed.
             payment.PaymentMethodId = creditCardPayment.PaymentMethodId;
             payment.PaymentMethodName = creditCardPayment.SystemKeyword;
             payment.Amount = CartWithValidationIssues.Cart.GetTotal().Amount;
-            payment.CreditCardNumber = creditCard.CreditCardNumber;
-            payment.CreditCardSecurityCode = creditCard.SecurityCode;
-            payment.ExpirationMonth = creditCard.ExpirationMonth ?? 1;
-            payment.ExpirationYear = creditCard.ExpirationYear ?? DateTime.Now.Year;
             payment.Status = PaymentStatus.Pending.ToString();
             payment.CustomerName = contact.FullName;
             payment.TransactionType = TransactionType.Authorization.ToString();
@@ -387,10 +379,6 @@ namespace Foundation.Features.NamedCarts.DefaultCart
                 return RedirectToCart("The product is invalid");
             }
             var order = _checkoutService.PlaceOrder(CartWithValidationIssues.Cart, new ModelStateDictionary(), new CheckoutViewModel());
-
-            //await _checkoutService.CreateOrUpdateBoughtProductsProfileStore(CartWithValidationIssues.Cart);
-            //await _checkoutService.CreateBoughtProductsSegments(CartWithValidationIssues.Cart);
-            await _recommendationService.TrackOrder(HttpContext, order);
 
             var referencePages = _settingsService.GetSiteSettings<ReferencePageSettings>();
             if (!(referencePages?.OrderConfirmationPage.IsNullOrEmpty() ?? true))
@@ -530,7 +518,7 @@ namespace Foundation.Features.NamedCarts.DefaultCart
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> Reorder(string orderId)
+        public ActionResult Reorder(string orderId)
         {
             if (!int.TryParse(orderId, out var orderIntId))
             {
@@ -558,11 +546,7 @@ namespace Foundation.Features.NamedCarts.DefaultCart
             {
                 var result = _cartService.AddToCart(CartWithValidationIssues.Cart,
                     new RequestParamsToCart { Code = item.Code, Quantity = item.Quantity, Store = "delivery", SelectedStore = "" });
-                if (result.EntriesAddedToCart)
-                {
-                    await _recommendationService.TrackCart(HttpContext, CartWithValidationIssues.Cart);
-                }
-                else
+                if (!result.EntriesAddedToCart)
                 {
                     return StatusCode(500, result.GetComposedValidationMessage());
                 }
@@ -573,7 +557,7 @@ namespace Foundation.Features.NamedCarts.DefaultCart
         }
 
         [HttpPost]
-        public async Task<ActionResult> ChangeCartItem([FromBody] RequestParamsToCart param) // change quantity
+        public ActionResult ChangeCartItem([FromBody] RequestParamsToCart param) // change quantity
         {
             ModelState.Clear();
 
@@ -587,8 +571,6 @@ namespace Foundation.Features.NamedCarts.DefaultCart
                     model.Message += GetValidationMessages(item, validationIssues);
                 }
             }
-            var trackingResponse = await _recommendationService.TrackCart(HttpContext, CartWithValidationIssues.Cart);
-            //model.Recommendations = trackingResponse.GetCartRecommendations(_referenceConverter);
             var viewModel = _cartViewModelFactory.CreateLargeCartViewModel(CartWithValidationIssues.Cart, null);
 
             if (param.RequestFrom == "changeSizeItem")
@@ -634,7 +616,7 @@ namespace Foundation.Features.NamedCarts.DefaultCart
         }
 
         [HttpPost]
-        public async Task<ActionResult> RemoveCartItem([FromBody] RequestParamsToCart param) // only use ShipmentId, Code (variant Code)
+        public ActionResult RemoveCartItem([FromBody] RequestParamsToCart param) // only use ShipmentId, Code (variant Code)
         {
             ModelState.Clear();
             var productName = "";
@@ -643,7 +625,6 @@ namespace Foundation.Features.NamedCarts.DefaultCart
 
             var result = _cartService.ChangeCartItem(CartWithValidationIssues.Cart, param.ShipmentId, param.Code, 0, null, null);
             _orderRepository.Save(CartWithValidationIssues.Cart);
-            await _recommendationService.TrackCart(HttpContext, CartWithValidationIssues.Cart);
 
             if (result.Count > 0)
             {
@@ -683,7 +664,7 @@ namespace Foundation.Features.NamedCarts.DefaultCart
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult AddCouponCode([FromQuery] string couponCode)
+        public ActionResult AddCouponCode([FromForm] string couponCode)
         {
             if (_cartService.AddCouponCode(CartWithValidationIssues.Cart, couponCode))
             {
@@ -700,7 +681,7 @@ namespace Foundation.Features.NamedCarts.DefaultCart
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult RemoveCouponCode([FromQuery] string couponCode)
+        public ActionResult RemoveCouponCode([FromForm] string couponCode)
         {
             _cartService.RemoveCouponCode(CartWithValidationIssues.Cart, couponCode);
             _orderRepository.Save(CartWithValidationIssues.Cart);
@@ -710,7 +691,7 @@ namespace Foundation.Features.NamedCarts.DefaultCart
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult EstimateShipping(CartPage currentPage, [FromBody] LargeCartViewModel largeCartViewModel)
+        public ActionResult EstimateShipping(CartPage currentPage, [FromForm] LargeCartViewModel largeCartViewModel)
         {
             var orderAddress = CartWithValidationIssues.Cart.GetFirstShipment().ShippingAddress;
             if (orderAddress == null)
@@ -751,12 +732,11 @@ namespace Foundation.Features.NamedCarts.DefaultCart
         }
 
         [HttpPost]
-        public async Task<ActionResult> RemoveItem(CartPage currentPage, int shipmentId, string code)
+        public ActionResult RemoveItem(CartPage currentPage, int shipmentId, string code)
         {
             var message = string.Empty;
             var issues = _cartService.ChangeCartItem(CartWithValidationIssues.Cart, shipmentId, code, 0, "", "");
             _orderRepository.Save(CartWithValidationIssues.Cart);
-            await _recommendationService.TrackCart(HttpContext, CartWithValidationIssues.Cart);
             var viewModel = _cartViewModelFactory.CreateLargeCartViewModel(CartWithValidationIssues.Cart, currentPage);
             if (issues.Any())
             {

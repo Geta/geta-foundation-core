@@ -1,9 +1,20 @@
-﻿@model PageListBlockViewModel
-@using EPiServer.Core.Html
+@model PageListBlockViewModel
+@* CMS 13 removed: EPiServer.Core.Html.TextIndexer removed. *@
+@* @using EPiServer.Core.Html *@
 @using Foundation.Features.Blocks.PageListBlock
 @using Foundation.Features.Shared.SelectionFactories
+@using System.Text.RegularExpressions
+@using System.Net
 
-
+@{
+    // CMS 13 removed: TextIndexer.StripHtml replaced with local function.
+    Func<string, int, string> StripHtml = (html, max) => {
+        if (string.IsNullOrEmpty(html)) return string.Empty;
+        var s = Regex.Replace(html, "<[^>]+>", string.Empty);
+        s = WebUtility.HtmlDecode(s);
+        return max > 0 && s.Length > max ? s.Substring(0, max) : s;
+    };
+}
 
 @if (Model.Pages != null && Model.Pages.Any())
 {
@@ -32,12 +43,12 @@
                         <p class="sub-title">@pageModel.Page.StartPublish.Value.ToString("dd MMM yyyy")</p>
                     }
                     <h4>
-                        @(@Html.Raw(TextIndexer.StripHtml(pageModel != null ? foundationPage.MetaTitle : pageModel.Page.Name, 55)) + "...")
+                        @(@Html.Raw(StripHtml(pageModel != null ? foundationPage.MetaTitle : pageModel.Page.Name, 55)) + "...")
                     </h4>
 
                     @if (pageModel != null && pageModel.ShowIntroduction)
                     {
-                        <p class="light-text">@Html.Raw(TextIndexer.StripHtml(foundationPage.TeaserText, 200))</p>
+                        <p class="light-text">@Html.Raw(StripHtml(foundationPage.TeaserText, 200))</p>
                     }
                 </div>
             </a>

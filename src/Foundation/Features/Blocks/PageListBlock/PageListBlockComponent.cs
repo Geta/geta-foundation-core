@@ -1,7 +1,6 @@
 using EPiServer.Filters;
 using Foundation.Features.Folder;
 using Foundation.Infrastructure.Cms;
-using Geta.Optimizely.Categories;
 
 namespace Foundation.Features.Blocks.PageListBlock
 {
@@ -43,14 +42,18 @@ namespace Foundation.Features.Blocks.PageListBlock
         {
             IEnumerable<PageData> pages = new List<PageData>();
             var current = currentBlock;
-            var rootList = currentBlock.Roots?.FilteredItems ?? Enumerable.Empty<ContentAreaItem>();
+            // CMS 13: ContentArea.FilteredItems obsolete. Use Items instead.
+            var rootList = currentBlock.Roots?.Items ?? Enumerable.Empty<ContentAreaItem>();
             if (currentBlock.Recursive)
             {
                 if (currentBlock.PageTypeFilter != null)
                 {
                     foreach (var root in rootList)
                     {
-                        var page = _contentLocator.FindPagesByPageType(root.ContentLink as PageReference, true, currentBlock.PageTypeFilter.ID);
+                        // CMS 13: ContentAreaItem.ContentLink is ContentReference; cast to PageReference via ID.
+                        var pageRef = ToPageReference(root.ContentLink);
+                        if (pageRef == null) continue;
+                        var page = _contentLocator.FindPagesByPageType(pageRef, true, currentBlock.PageTypeFilter.ID);
                         pages = pages.Union(page);
                     }
                 }
@@ -58,7 +61,8 @@ namespace Foundation.Features.Blocks.PageListBlock
                 {
                     foreach (var root in rootList)
                     {
-                        var page = _contentLocator.GetAll<PageData>(root.ContentLink as PageReference);
+                        if (ContentReference.IsNullOrEmpty(root.ContentLink)) continue;
+                        var page = _contentLocator.GetAll<PageData>(root.ContentLink);
                         pages = pages.Union(page);
                     }
                 }
@@ -69,7 +73,8 @@ namespace Foundation.Features.Blocks.PageListBlock
                 {
                     foreach (var root in rootList)
                     {
-                        var page = _contentLoader.GetChildren<PageData>(root.ContentLink as PageReference)
+                        if (ContentReference.IsNullOrEmpty(root.ContentLink)) continue;
+                        var page = _contentLoader.GetChildren<PageData>(root.ContentLink)
                             .Where(p => p.ContentTypeID == currentBlock.PageTypeFilter.ID);
                         pages = pages.Union(page);
                     }
@@ -78,23 +83,24 @@ namespace Foundation.Features.Blocks.PageListBlock
                 {
                     foreach (var root in rootList)
                     {
-                        var page = _contentLoader.GetChildren<PageData>(root.ContentLink as PageReference);
+                        if (ContentReference.IsNullOrEmpty(root.ContentLink)) continue;
+                        var page = _contentLoader.GetChildren<PageData>(root.ContentLink);
                         pages = pages.Union(page);
                     }
                 }
             }
-            if (currentBlock.CategoryListFilter != null && currentBlock.CategoryListFilter.Any())
-            {
-                pages = pages.Where(x =>
-                {
-                    var categories = (x as ICategorizableContent)?.Categories;
-                    return categories != null &&
-                           categories.Intersect(currentBlock.CategoryListFilter).Any();
-                });
-            }
+            // Category filtering removed: Geta.Optimizely.Categories has no CMS 13 version.
             pages = pages.Where(x => x.VisibleInMenu);
 
             return pages;
+        }
+
+        // CMS 13: ContentAreaItem.ContentLink is typed as ContentReference, not PageReference.
+        // Create a PageReference from the ContentReference ID to pass to APIs that require PageReference.
+        private static PageReference ToPageReference(ContentReference contentLink)
+        {
+            if (ContentReference.IsNullOrEmpty(contentLink)) return null;
+            return new PageReference(contentLink.ID, contentLink.WorkID);
         }
 
         private IEnumerable<PageData> Sort(IEnumerable<PageData> pages, FilterSortOrder sortOrder)

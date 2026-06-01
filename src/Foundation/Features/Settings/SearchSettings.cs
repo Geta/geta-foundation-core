@@ -1,14 +1,15 @@
 ﻿using Foundation.Infrastructure.Cms.Settings;
 using Foundation.Infrastructure.Commerce.Models.EditorDescriptors;
-using Foundation.Infrastructure.Find.Facets;
-using Foundation.Infrastructure.Find.Facets.Config;
+// CMS 13 / Phase 3: SearchFiltersConfiguration removed from code model pending Phase 4 Graph replacement.
+// IFacetConfiguration removed from SearchSettings for the same reason.
+// The property definition remains in the DB (pkID=1007 → FacetFilterConfigurationProperty) as an orphan.
 
 namespace Foundation.Features.Settings
 {
     [SettingsContentType(DisplayName = "Search & Catalog Settings",
         GUID = "d4171337-70a4-476a-aa3c-0d976ac185e8",
         SettingsName = "Search Settings")]
-    public class SearchSettings : SettingsBase, IFacetConfiguration
+    public class SearchSettings : SettingsBase
     {
         [CultureSpecific]
         [SelectOne(SelectionFactoryType = typeof(SearchOptionSelectionFactory))]
@@ -37,13 +38,9 @@ namespace Foundation.Features.Settings
             Description = "The catalogs that will be returned by search.")]
         public virtual int SearchCatalog { get; set; }
 
-        [CultureSpecific]
-        [Display(Name = "Search Filters Configuration",
-            Description = "Manage filters to be displayed on Search",
-            GroupName = TabNames.SearchSettings,
-            Order = 300)]
-        [EditorDescriptor(EditorDescriptorType = typeof(IgnoreCollectionEditorDescriptor<FacetFilterConfigurationItem>))]
-        public virtual IList<FacetFilterConfigurationItem> SearchFiltersConfiguration { get; set; }
+        // Phase 4 TODO: re-add SearchFiltersConfiguration with Optimizely Graph backing type.
+        // [BackingType(typeof(FacetFilterConfigurationProperty))]
+        // public virtual IList<FacetFilterConfigurationItem> SearchFiltersConfiguration { get; set; }
 
         [SelectOne(SelectionFactoryType = typeof(CurrencySelectionFactory))]
         [Display(Name = "Currency", GroupName = TabNames.SearchSettings, Order = 210)]

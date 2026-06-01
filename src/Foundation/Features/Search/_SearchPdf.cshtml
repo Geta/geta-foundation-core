@@ -1,4 +1,4 @@
-﻿@using EPiServer.Find;
+﻿@* EPiServer.Find removed: @using EPiServer.Find removed. Phase 4 will restore. *@
 @using Foundation.Features.Search
 @using Foundation.Features.Search.Search
 
@@ -30,10 +30,7 @@
                         }
                         <div class="@(content.ImageUri != null ? "col-10" : "col-12") content__item">
                             <b class="title">
-                                @if (content.IsBestBet() && content.HasBestBetStyle())
-                                {
-                                    <i data-feather="star" class="content__betbest"></i>
-                                }
+                                @* EPiServer.Find removed: IsBestBet/HasBestBetStyle extension methods removed. Phase 4 will restore. *@
                                 @Html.Raw(content.Title)
                             </b>
                             <div class="sub-title">

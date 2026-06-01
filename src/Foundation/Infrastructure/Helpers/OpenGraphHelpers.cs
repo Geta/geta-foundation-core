@@ -71,48 +71,12 @@ namespace Foundation.Infrastructure.Helpers
 
                     return helper.OpenGraph(openGraphHomePage);
 
-                case LocationItemPage locationItemPage:
-                    var openGraphLocationItemPage = new OpenGraphLocationItemPage(metaTitle, new OpenGraphImage(new Uri(imageUrl)), GetUrl(contentViewModel.CurrentContent.ContentLink))
-                    {
-                        Description = locationItemPage.PageDescription,
-                        Locale = defaultLocale.Name.Replace('-', '_'),
-                        AlternateLocales = alternateLocales,
-                        ContentType = contentType,
-                        ModifiedTime = locationItemPage.Changed,
-                        PublishedTime = locationItemPage.StartPublish ?? null,
-                        ExpirationTime = locationItemPage.StopPublish ?? null
-                    };
-
-                    var categories = new List<string>();
-
-                    if (locationItemPage.Continent != null)
-                    {
-                        categories.Add(locationItemPage.Continent);
-                    }
-
-                    if (locationItemPage.Country != null)
-                    {
-                        categories.Add(locationItemPage.Country);
-                    }
-
-                    //openGraphLocationItemPage.Category = categories;
-
-                    //var tags = new List<string>();
-                    //var items = ((LocationItemPage)contentViewModel.CurrentContent).Categories;
-                    //if (items != null)
-                    //{
-                    //    foreach (var item in items)
-                    //    {
-                    //        tags.Add(_contentLoader.Value.Get<StandardCategory>(item).Name);
-                    //    }
-                    //}
-                    //openGraphLocationItemPage.Tags = tags;
-
-                    return helper.OpenGraph(openGraphLocationItemPage);
+                // Locations excluded: LocationItemPage and TagPage cases removed. Phase 4 will restore.
+                // case LocationItemPage locationItemPage: ...
+                // case TagPage _: ...
 
                 case BlogItemPage _:
                 case StandardPage _:
-                case TagPage _:
                     var openGraphArticle = new OpenGraphFoundationPageData(metaTitle, new OpenGraphImage(new Uri(imageUrl)), GetUrl(contentViewModel.CurrentContent.ContentLink))
                     {
                         Description = ((FoundationPageData)contentViewModel.CurrentContent).PageDescription,

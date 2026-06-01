@@ -1,4 +1,5 @@
-﻿using Foundation.Infrastructure.Commerce;
+﻿using EPiServer.Framework.Cache;
+using Foundation.Infrastructure.Commerce;
 using Mediachase.Commerce.Markets;
 
 namespace Foundation.Features.Markets
@@ -10,6 +11,8 @@ namespace Foundation.Features.Markets
         private readonly UrlResolver _urlResolver;
         private readonly LanguageService _languageService;
         private readonly ICurrencyService _currencyService;
+        // CMS 13: CacheManager obsolete. Use ISynchronizedObjectInstanceCache directly.
+        private readonly ISynchronizedObjectInstanceCache _objectInstanceCache;
         private const string FlagLocation = "/icons/flags/";
         private const string ViewName = "~/Features/Markets/Index.cshtml";
 
@@ -17,20 +20,23 @@ namespace Foundation.Features.Markets
             ICurrentMarket currentMarket,
             UrlResolver urlResolver,
             LanguageService languageService,
-            ICurrencyService currencyService)
+            ICurrencyService currencyService,
+            ISynchronizedObjectInstanceCache objectInstanceCache)
         {
             _marketService = marketService;
             _currentMarket = currentMarket;
             _urlResolver = urlResolver;
             _languageService = languageService;
             _currencyService = currencyService;
+            _objectInstanceCache = objectInstanceCache;
         }
 
         public IViewComponentResult Invoke(ContentReference contentLink)
         {
             var currentMarket = _currentMarket.GetCurrentMarket();
 
-            if (CacheManager.Get(Constant.CacheKeys.MarketViewModel + "-" + currentMarket.MarketId.Value) is MarketViewModel cache)
+            // CMS 13: CacheManager obsolete. Use ISynchronizedObjectInstanceCache.
+            if (_objectInstanceCache.Get(Constant.CacheKeys.MarketViewModel + "-" + currentMarket.MarketId.Value) is MarketViewModel cache)
             {
                 return View(ViewName, cache);
             }

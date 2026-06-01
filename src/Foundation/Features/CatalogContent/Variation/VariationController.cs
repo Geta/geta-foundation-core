@@ -1,7 +1,6 @@
-﻿using EPiServer.Framework.DataAnnotations;
+using EPiServer.Framework.DataAnnotations;
 using Foundation.Infrastructure.Cms;
 using Foundation.Infrastructure.Commerce.Customer.Services;
-using Foundation.Infrastructure.Personalization;
 
 namespace Foundation.Features.CatalogContent.Variation
 {
@@ -16,11 +15,10 @@ namespace Foundation.Features.CatalogContent.Variation
             CatalogEntryViewModelFactory viewModelFactory,
             //IReviewService reviewService,
             //IReviewActivityService reviewActivityService,
-            ICommerceTrackingService recommendationService,
             ReferenceConverter referenceConverter,
             IContentLoader contentLoader,
             UrlResolver urlResolver,
-            ILoyaltyService loyaltyService) : base(referenceConverter, contentLoader, urlResolver, /*reviewService, reviewActivityService,*/ recommendationService, loyaltyService)
+            ILoyaltyService loyaltyService) : base(referenceConverter, contentLoader, urlResolver, /*reviewService, reviewActivityService,*/ loyaltyService)
         {
             _isInEditMode = isInEditModeAccessor();
             _viewModelFactory = viewModelFactory;

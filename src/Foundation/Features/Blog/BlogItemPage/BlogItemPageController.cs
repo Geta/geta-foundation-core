@@ -1,7 +1,6 @@
 ﻿using EPiServer.Cms.Shell;
-using EPiServer.Core.Html;
-using Foundation.Features.Category;
-using System.Globalization;
+// CMS 13 removed: EPiServer.Core.Html.TextIndexer removed.
+// using EPiServer.Core.Html;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -47,17 +46,7 @@ namespace Foundation.Features.Blog.BlogItemPage
 
         public IEnumerable<BlogItemPageViewModel.TagItem> GetTags(BlogItemPage currentPage)
         {
-            if (currentPage.Categories != null)
-            {
-                var allCategories = _contentLoader.GetItems(currentPage.Categories, CultureInfo.CurrentUICulture);
-                return allCategories
-                    .Select(cat => new BlogItemPageViewModel.TagItem()
-                    {
-                        Title = cat.Name,
-                        Url = _blogTagFactory.GetTagUrl(currentPage, cat.ContentLink),
-                        DisplayName = (cat as StandardCategory)?.Description,
-                    }).ToList();
-            }
+            // Category filtering removed: Geta.Optimizely.Categories has no CMS 13 version.
             return new List<BlogItemPageViewModel.TagItem>();
         }
 
@@ -85,7 +74,17 @@ namespace Foundation.Features.Blog.BlogItemPage
             regexPattern.Append(@"""[\s\W\w]*?</span>");
             previewText = Regex.Replace(previewText, regexPattern.ToString(), string.Empty, RegexOptions.IgnoreCase | RegexOptions.Multiline);
 
-            return TextIndexer.StripHtml(previewText, PreviewTextLength);
+            // CMS 13 removed: EPiServer.Core.Html.TextIndexer removed. Strip HTML manually.
+            return StripHtml(previewText, PreviewTextLength);
+        }
+
+        // CMS 13 removed: TextIndexer.StripHtml removed. Replacement using Regex.
+        private static string StripHtml(string html, int maxLength)
+        {
+            if (string.IsNullOrEmpty(html)) return string.Empty;
+            var stripped = System.Text.RegularExpressions.Regex.Replace(html, "<[^>]+>", string.Empty);
+            stripped = System.Net.WebUtility.HtmlDecode(stripped);
+            return maxLength > 0 && stripped.Length > maxLength ? stripped.Substring(0, maxLength) : stripped;
         }
 
         private List<KeyValuePair<string, string>> GetBreadCrumb(BlogItemPage currentPage)

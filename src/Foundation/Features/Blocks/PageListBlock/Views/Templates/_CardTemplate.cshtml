@@ -1,11 +1,21 @@
-﻿@using EPiServer.Core.Html
+@* CMS 13 removed: EPiServer.Core.Html.TextIndexer removed. *@
+@* @using EPiServer.Core.Html *@
 @using Foundation.Features.Blocks.PageListBlock
+@using System.Text.RegularExpressions
+@using System.Net
 
 @model PageListBlockViewModel
 
 @{
     //Set the right column width based on PreviewOption
     int col = Model.PreviewOption;
+    // CMS 13 removed: TextIndexer.StripHtml replaced with local function.
+    Func<string, int, string> StripHtml = (html, max) => {
+        if (string.IsNullOrEmpty(html)) return string.Empty;
+        var s = Regex.Replace(html, "<[^>]+>", string.Empty);
+        s = WebUtility.HtmlDecode(s);
+        return max > 0 && s.Length > max ? s.Substring(0, max) : s;
+    };
 }
 
 <div class="row">
@@ -53,7 +63,7 @@
                 </div>
                 <div class="page-list-block-preview__card--overlay" style="background-color: @Model.CurrentBlock.OverlayColor;">
                     <div class="page-list-block-preview__card--description" style="color: @Model.CurrentBlock.OverlayTextColor">
-                        <p>@Html.Raw(TextIndexer.StripHtml(foundationPage.TeaserText, 200))</p>
+                        <p>@Html.Raw(StripHtml(foundationPage.TeaserText, 200))</p>
                         <a href="@foundationPage.ContentLink.GetPublicUrl()">
                             Read more
                         </a>

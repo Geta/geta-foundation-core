@@ -39,6 +39,10 @@ namespace Foundation.Features.MyOrganization.Organization
             }
 
             var currentOrganization = _organizationService.GetCurrentFoundationOrganization();
+            if (currentOrganization == null)
+            {
+                return View(new OrganizationPageViewModel { CurrentContent = currentPage });
+            }
             _cookieService.Set(Constant.Fields.SelectedOrganization, currentOrganization.OrganizationId.ToString());
             _cookieService.Set(Constant.Fields.SelectedNavOrganization, currentOrganization.OrganizationId.ToString());
 

@@ -10,7 +10,6 @@ using Foundation.Infrastructure.Cms.Users;
 using Foundation.Infrastructure.Commerce;
 using Foundation.Infrastructure.Commerce.Customer.Services;
 using Foundation.Infrastructure.Commerce.GiftCard;
-using Foundation.Infrastructure.Personalization;
 using Mediachase.Commerce.Shared;
 using Microsoft.AspNetCore.Mvc.Filters;
 
@@ -23,7 +22,6 @@ namespace Foundation.Features.Checkout
         private readonly OrderSummaryViewModelFactory _orderSummaryViewModelFactory;
         private readonly IOrderRepository _orderRepository;
         private readonly ICartService _cartService;
-        private readonly ICommerceTrackingService _recommendationService;
         private CartWithValidationIssues _cart;
         private readonly CheckoutService _checkoutService;
         private readonly IUrlHelper _urlHelper;
@@ -45,7 +43,6 @@ namespace Foundation.Features.Checkout
             CheckoutViewModelFactory checkoutViewModelFactory,
             ICartService cartService,
             OrderSummaryViewModelFactory orderSummaryViewModelFactory,
-            ICommerceTrackingService recommendationService,
             CheckoutService checkoutService,
             IUrlHelper urlHelper,
             ApplicationSignInManager<SiteUser> applicationSignInManager,
@@ -66,7 +63,6 @@ namespace Foundation.Features.Checkout
             _checkoutViewModelFactory = checkoutViewModelFactory;
             _cartService = cartService;
             _orderSummaryViewModelFactory = orderSummaryViewModelFactory;
-            _recommendationService = recommendationService;
             _checkoutService = checkoutService;
             _urlHelper = urlHelper;
             _applicationSignInManager = applicationSignInManager;
@@ -393,9 +389,6 @@ namespace Foundation.Features.Checkout
             }
 
             var confirmationSentSuccessfully = await _checkoutService.SendConfirmation(viewModel, purchaseOrder);
-            //await _checkoutService.CreateOrUpdateBoughtProductsProfileStore(CartWithValidationIssues.Cart);
-            //await _checkoutService.CreateBoughtProductsSegments(CartWithValidationIssues.Cart);
-            await _recommendationService.TrackOrder(HttpContext, purchaseOrder);
 
             return Redirect(_checkoutService.BuildRedirectionUrl(viewModel, purchaseOrder, confirmationSentSuccessfully));
         }
@@ -466,15 +459,22 @@ namespace Foundation.Features.Checkout
             // format: key = Shipment | Billing
             var errorTypes = new List<KeyValuePair<string, int>>();
 
-            // shipping information
-            UpdateShipmentAddress(checkoutViewModel, errorTypes);
+            try
+            {
+                // shipping information
+                UpdateShipmentAddress(checkoutViewModel, errorTypes);
 
-            // subscription
-            AddSubscription(checkoutViewModel);
+                // subscription
+                AddSubscription(checkoutViewModel);
 
-            // billing address
-            UpdatePaymentAddress(checkoutViewModel, errorTypes);
-            _orderRepository.Save(CartWithValidationIssues.Cart);
+                // billing address
+                UpdatePaymentAddress(checkoutViewModel, errorTypes);
+                _orderRepository.Save(CartWithValidationIssues.Cart);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { Status = false, Message = ex.Message });
+            }
 
             if (!ModelState.IsValid)
             {
@@ -523,9 +523,6 @@ namespace Foundation.Features.Checkout
                 }
                 checkoutViewModel.CurrentContent = currentPage;
                 var confirmationSentSuccessfully = await _checkoutService.SendConfirmation(checkoutViewModel, purchaseOrder);
-                //await _checkoutService.CreateOrUpdateBoughtProductsProfileStore(CartWithValidationIssues.Cart);
-                //await _checkoutService.CreateBoughtProductsSegments(CartWithValidationIssues.Cart);
-                await _recommendationService.TrackOrder(HttpContext, purchaseOrder);
 
                 string redirectURL = _checkoutService.BuildRedirectionUrl(checkoutViewModel, purchaseOrder, confirmationSentSuccessfully);
                     return Json(new { Status = true, RedirectUrl = redirectURL });

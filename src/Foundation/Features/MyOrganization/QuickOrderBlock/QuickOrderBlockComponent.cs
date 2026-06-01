@@ -191,7 +191,8 @@ namespace Foundation.Features.MyOrganization.QuickOrderBlock
         }
         private ICart Cart => _cart ?? (_cart = _cartService.LoadCart(_cartService.DefaultCartName, true)?.Cart);
 
-        private QuickOrderPage.QuickOrderPage GetQuickOrderPage() => _contentLoader.FindPagesRecursively<QuickOrderPage.QuickOrderPage>(ContentReference.StartPage).FirstOrDefault();
+        // CMS 13: FindPagesRecursively requires PageReference. Cast ContentReference.StartPage.
+        private QuickOrderPage.QuickOrderPage GetQuickOrderPage() => _contentLoader.FindPagesRecursively<QuickOrderPage.QuickOrderPage>((PageReference)ContentReference.StartPage).FirstOrDefault();
 
 
         private void AddToCartQuickOrder(ICart cart, QuickOrderProductViewModel product, List<string> returnedMessages, string responseMessage)

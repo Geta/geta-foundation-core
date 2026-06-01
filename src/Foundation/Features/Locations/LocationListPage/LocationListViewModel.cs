@@ -1,6 +1,3 @@
-using EPiServer.Find.Cms;
-using EPiServer.Personalization;
-
 namespace Foundation.Features.Locations.LocationListPage
 {
     public class LocationListViewModel : ContentViewModel<LocationListPage>
@@ -9,9 +6,9 @@ namespace Foundation.Features.Locations.LocationListPage
         {
         }
 
-        public GeoCoordinate MapCenter { get; set; }
-        public IGeolocationResult UserLocation { get; set; }
-        public IContentResult<LocationItemPage.LocationItemPage> Locations { get; set; }
+        // EPiServer.Find removed: IContentResult replaced with IEnumerable.
+        // MapCenter/UserLocation removed: GeoCoordinate and IGeolocationResult required EPiServer.Find/Personalization geo APIs.
+        public IEnumerable<LocationItemPage.LocationItemPage> Locations { get; set; }
         public IQueryCollection QueryString { get; set; }
     }
 }

@@ -1,6 +1,4 @@
-﻿using Advanced.CMS.GroupingHeader;
-
-namespace Foundation.Features.Blocks.ModalBlock
+﻿namespace Foundation.Features.Blocks.ModalBlock
 {
     [ContentType(DisplayName = "Modal Block",
         GUID = "FC6DA151-097A-442F-9583-0DD937B3E3E2",
@@ -9,7 +7,6 @@ namespace Foundation.Features.Blocks.ModalBlock
     [ImageUrl("/icons/cms/blocks/CMS-icon-block-03.png")]
     public class ModalBlock : BlockData
     {
-        [GroupingHeader("Modal Block Trigger Options")]
         [CultureSpecific]
         [Display(Name = "Show modal automatically on page load",
          Description = "Check this box to pop up the modal when page is loaded",
@@ -59,7 +56,6 @@ namespace Foundation.Features.Blocks.ModalBlock
          GroupName = SystemTabNames.Content)]
         public virtual int ModalOpenButtonWidth { get; set; }
 
-        [GroupingHeader("Modal Block Header Options")]
         [CultureSpecific]
         [Display(Name = "Hide modal title?",
          Description = "Check this box to hide the title section on modal",
@@ -74,7 +70,6 @@ namespace Foundation.Features.Blocks.ModalBlock
          GroupName = SystemTabNames.Content)]
         public virtual string ModalTitle { get; set; }
 
-        [GroupingHeader("Modal Block Body")]
         [CultureSpecific]
         [Display(Name = "Modal body",
          Order = 100,
@@ -82,7 +77,6 @@ namespace Foundation.Features.Blocks.ModalBlock
         [AllowedTypes(new[] { typeof(IContentData) })]
         public virtual ContentArea ModalContentArea { get; set; }
 
-        [GroupingHeader("Modal Block Footer Options")]
         [CultureSpecific]
         [Display(Name = "Hide modal footer?",
          Description = "Check this box to hide footer (close button) section on modal",
@@ -111,7 +105,6 @@ namespace Foundation.Features.Blocks.ModalBlock
          GroupName = SystemTabNames.Content)]
         public virtual Url ModalPrimaryButtonLink { get; set; }
 
-        [GroupingHeader("Modal Block Image Options")]
         [CultureSpecific]
         [UIHint(UIHint.Image)]
         [Display(Name = "Modal background image (optional)",
@@ -126,7 +119,6 @@ namespace Foundation.Features.Blocks.ModalBlock
          GroupName = SystemTabNames.Content)]
         public virtual ContentReference ModalBackdropImage { get; set; }
 
-        [GroupingHeader("Misc Options")]
         [SelectOne(SelectionFactoryType = typeof(ModalSizeSelectionFactory))]
         [Display(Name = "Modal size", 
             Description = "Size of modal",

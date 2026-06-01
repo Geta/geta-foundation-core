@@ -1,5 +1,4 @@
 using EPiServer.Filters;
-using Geta.Optimizely.Categories.DataAnnotations;
 using System.ComponentModel;
 
 namespace Foundation.Features.Blog.BlogListPage
@@ -33,7 +32,7 @@ namespace Foundation.Features.Blog.BlogListPage
         [Display(Name = "Include teaser text", GroupName = TabNames.BlogList, Order = 50)]
         public virtual bool IncludeTeaserText { get; set; }
 
-        [Categories]
+        // [Categories] attribute removed: Geta.Optimizely.Categories has no CMS 13 version.
         [Display(
             Name = "Category filter (match all selected)",
             Description = "Categories to filter the list on",

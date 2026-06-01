@@ -1,40 +1,31 @@
-﻿using EPiServer.Find;
-using EPiServer.Find.Api.Querying;
-using EPiServer.Find.Api.Querying.Filters;
-using EPiServer.Find.Cms;
-using EPiServer.Find.Commerce;
-using EPiServer.Find.Framework.BestBets;
-using EPiServer.Find.Framework.Statistics;
-using EPiServer.Find.Helpers;
-using EPiServer.Find.Statistics;
-using EPiServer.Find.UnifiedSearch;
+// Phase 5: Graph search implementation.
+// Graph is the primary search path; falls back to in-memory if Graph is unavailable or not yet indexed.
+// Prerequisites: services.AddContentGraph() and services.AddGraphContentClient() in Startup.cs.
+// Content must be synced to Optimizely Content Cloud before Graph queries return results.
 using EPiServer.Globalization;
-using EPiServer.Security;
+using EPiServer.Web.Routing;
+using Foundation.Features.Blocks.ProductFilterBlocks;
 using Foundation.Features.CatalogContent;
 using Foundation.Features.CatalogContent.Package;
 using Foundation.Features.CatalogContent.Product;
 using Foundation.Features.CatalogContent.Services;
-using Foundation.Features.Category;
-using Foundation.Features.Media;
-using Foundation.Features.MyOrganization.QuickOrderPage;
 using Foundation.Features.MyOrganization.Users;
+using Foundation.Features.MyOrganization.QuickOrderPage; // SkuSearchResultModel
 using Foundation.Features.NewProducts;
 using Foundation.Features.Sales;
 using Foundation.Features.Search.Category;
-using Foundation.Infrastructure.Find;
 using Foundation.Infrastructure.Find.Facets;
-using Geta.Optimizely.Categories;
-using Geta.Optimizely.Categories.Find.Extensions;
-using Mediachase.Commerce.Security;
-using Mediachase.Commerce.Website.Search;
+using Microsoft.Extensions.Logging;
+using Optimizely.Graph.Cms.Query;
+using Optimizely.Graph.Cms.Query.Implementation; // OrderDirection
 using static Foundation.Features.Shared.SelectionFactories.InclusionOrderingSelectionFactory;
 
 namespace Foundation.Features.Search
 {
     public interface ISearchService
     {
-        ProductSearchResults Search(IContent currentContent, FilterOptionViewModel filterOptions, string selectedFacets, int catalogId = 0);
-        ProductSearchResults SearchWithFilters(IContent currentContent, FilterOptionViewModel filterOptions, IEnumerable<Filter> filters, int catalogId = 0);
+        ProductSearchResults Search(IContent currentContent, FilterOptionViewModel filterOptions, string selectedFacets, int catalogId = 0, IEnumerable<Func<EntryContentBase, bool>> filters = null);
+        // SearchWithFilters removed: only used by ProductSearchBlockComponent which is excluded (uses EPiServer.Find Filter types).
         IEnumerable<ProductTileViewModel> SearchOnSale(SalesPage currentContent, out List<int> pages, int catalogId = 0, int page = 1, int pageSize = 12);
         IEnumerable<ProductTileViewModel> SearchNewProducts(NewProductsPage currentContent, out List<int> pages, int catalogId = 0, int page = 1, int pageSize = 12);
         IEnumerable<ProductTileViewModel> QuickSearch(string query, int catalogId = 0);
@@ -45,8 +36,6 @@ namespace Foundation.Features.Search
         IEnumerable<SkuSearchResultModel> SearchSkus(string query);
         ContentSearchViewModel SearchContent(FilterOptionViewModel filterOptions);
         ContentSearchViewModel SearchPdf(FilterOptionViewModel filterOptions);
-        CategorySearchResults SearchByCategory(Pagination pagination);
-        ITypeSearch<T> FilterByCategories<T>(ITypeSearch<T> query, IEnumerable<ContentReference> categories) where T : ICategorizableContent;
     }
 
     public class SearchService : ISearchService
@@ -54,936 +43,380 @@ namespace Foundation.Features.Search
         private readonly ICurrentMarket _currentMarket;
         private readonly ICurrencyService _currencyService;
         private readonly IContentLanguageAccessor _contentLanguageAccessor;
-        private readonly IClient _findClient;
-        private readonly IFacetRegistry _facetRegistry;
-        private const int DefaultPageSize = 18;
-        //private readonly IFindUIConfiguration _findUIConfiguration;
         private readonly ReferenceConverter _referenceConverter;
         private readonly IContentRepository _contentRepository;
         private readonly IPriceService _priceService;
         private readonly IPromotionService _promotionService;
-        private readonly ICurrencyService _currencyservice;
         private readonly IContentLoader _contentLoader;
-        private readonly IBestBetRepository _bestBetRepository;
-        private static readonly Random _random = new Random();
+        private readonly IProductService _productService;
+        private readonly UrlResolver _urlResolver;
+        private readonly IGraphContentClient _graphClient;
+        private readonly ILogger<SearchService> _logger;
 
-        public SearchService(ICurrentMarket currentMarket,
+        public SearchService(
+            ICurrentMarket currentMarket,
             ICurrencyService currencyService,
             IContentLanguageAccessor contentLanguageAccessor,
-            IClient findClient,
-            IFacetRegistry facetRegistry,
-            //IFindUIConfiguration findUIConfiguration,
             ReferenceConverter referenceConverter,
             IContentRepository contentRepository,
             IPriceService priceService,
             IPromotionService promotionService,
-            ICurrencyService currencyservice,
             IContentLoader contentLoader,
-            IBestBetRepository bestBetRepository
-            )
+            IProductService productService,
+            UrlResolver urlResolver,
+            IGraphContentClient graphClient,
+            ILogger<SearchService> logger)
         {
             _currentMarket = currentMarket;
             _currencyService = currencyService;
             _contentLanguageAccessor = contentLanguageAccessor;
-            _findClient = findClient;
-            _facetRegistry = facetRegistry;
-            //_findUIConfiguration = findUIConfiguration;
-            //_findClient.Personalization().Refresh();
             _referenceConverter = referenceConverter;
             _contentRepository = contentRepository;
             _priceService = priceService;
             _promotionService = promotionService;
-            _currencyservice = currencyservice;
             _contentLoader = contentLoader;
-            _bestBetRepository = bestBetRepository;
+            _productService = productService;
+            _urlResolver = urlResolver;
+            _graphClient = graphClient;
+            _logger = logger;
         }
 
-        public ProductSearchResults Search(IContent currentContent,
-            FilterOptionViewModel filterOptions,
-            string selectedFacets,
-            int catalogId = 0) => filterOptions == null ? CreateEmptyResult() : GetSearchResults(currentContent, filterOptions, selectedFacets, null, catalogId);
+        // ── Product search ──────────────────────────────────────────────────────────
 
-        public ProductSearchResults SearchWithFilters(IContent currentContent,
-            FilterOptionViewModel filterOptions,
-            IEnumerable<Filter> filters,
-            int catalogId = 0) => filterOptions == null ? CreateEmptyResult() : GetSearchResults(currentContent, filterOptions, "", filters, catalogId);
+        public ProductSearchResults Search(IContent currentContent, FilterOptionViewModel filterOptions, string selectedFacets, int catalogId = 0, IEnumerable<Func<EntryContentBase, bool>> filters = null)
+        {
+            var query = filterOptions?.Q ?? "";
+            var page = filterOptions?.Page > 0 ? filterOptions.Page : 1;
+            var pageSize = filterOptions?.PageSize > 0 ? filterOptions.PageSize : 12;
+            var skip = (page - 1) * pageSize;
 
-        public IEnumerable<ProductTileViewModel> QuickSearch(FilterOptionViewModel filterOptions,
-            int catalogId = 0)
-            => string.IsNullOrEmpty(filterOptions.Q) ? Enumerable.Empty<ProductTileViewModel>() : GetSearchResults(null, filterOptions, "", null, catalogId).ProductViewModels;
+            // Without a text query we're in catalogue-browse mode; in-memory handles ancestor
+            // scoping correctly and is fast enough for a reference catalogue.
+            if (string.IsNullOrWhiteSpace(query))
+                return SearchProductsInMemory(currentContent, filterOptions, filters);
+
+            // Text query: use Graph for full-text search across all product content.
+            // TODO: add catalogue-node scoping once ProductContent field mapping for
+            // ParentLink / Ancestors is confirmed in the Graph schema.
+            try
+            {
+                var result = _graphClient
+                    .QueryContent<ProductContent>()
+                    .SearchFor(query)
+                    .UsingFullText()
+                    .Skip(skip)
+                    .Limit(pageSize)
+                    .IncludeTotal()
+                    .GetAsContentAsync()
+                    .GetAwaiter().GetResult();
+
+                return new ProductSearchResults
+                {
+                    ProductViewModels = _productService.GetProductTileViewModels(result.Select(e => e.ContentLink)),
+                    FacetGroups = Enumerable.Empty<FacetGroupOption>(),
+                    TotalCount = result.Total ?? 0,
+                    Query = query
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Graph product search failed; falling back to in-memory scan.");
+                return SearchProductsInMemory(currentContent, filterOptions, filters);
+            }
+        }
 
         public IEnumerable<ProductTileViewModel> QuickSearch(string query, int catalogId = 0)
         {
-            var filterOptions = new FilterOptionViewModel
-            {
-                Q = query,
-                PageSize = 5,
-                Sort = string.Empty,
-                FacetGroups = new List<FacetGroupOption>(),
-                Page = 1,
-                TrackData = false
-            };
-            return QuickSearch(filterOptions, catalogId);
-        }
+            if (string.IsNullOrWhiteSpace(query))
+                return Enumerable.Empty<ProductTileViewModel>();
 
-        public IEnumerable<SortOrder> GetSortOrder()
-        {
-            var market = _currentMarket.GetCurrentMarket();
-            var currency = _currencyService.GetCurrentCurrency();
-
-            return new List<SortOrder>
+            try
             {
-                //new SortOrder {Name = ProductSortOrder.PriceAsc, Key = IndexingHelper.GetPriceField(market.MarketId, currency), SortDirection = SortDirection.Ascending},
-                new SortOrder {Name = ProductSortOrder.Popularity, Key = "", SortDirection = SortDirection.Ascending},
-                new SortOrder {Name = ProductSortOrder.NewestFirst, Key = "created", SortDirection = SortDirection.Descending}
-            };
-        }
+                var result = _graphClient
+                    .QueryContent<ProductContent>()
+                    .SearchFor(query)
+                    .UsingFullText()
+                    .Limit(6)
+                    .GetAsContentAsync()
+                    .GetAwaiter().GetResult();
 
-        public IEnumerable<UserSearchResultModel> SearchUsers(string query, int page = 1, int pageSize = 50)
-        {
-            var searchQuery = _findClient.Search<UserSearchResultModel>();
-            if (!string.IsNullOrEmpty(query))
-            {
-                searchQuery = searchQuery.For(query);
+                return _productService.GetProductTileViewModels(result.Select(e => e.ContentLink));
             }
-            var results = searchQuery.Skip((page - 1) * pageSize).Take(pageSize).GetResult();
-            if (results != null && results.Any())
+            catch (Exception ex)
             {
-                return results.Hits.AsEnumerable().Select(x => x.Document);
+                _logger.LogWarning(ex, "Graph quick search failed; falling back to in-memory.");
+                var matches = GetCatalogEntries<ProductContent>(_referenceConverter.GetRootLink())
+                    .Where(e => e.Name.Contains(query, StringComparison.OrdinalIgnoreCase)
+                             || e.Code.Contains(query, StringComparison.OrdinalIgnoreCase))
+                    .Take(6)
+                    .ToList();
+                return _productService.GetProductTileViewModels(matches.Select(e => e.ContentLink));
             }
-
-            return Enumerable.Empty<UserSearchResultModel>();
         }
 
-        public IEnumerable<SkuSearchResultModel> SearchSkus(string query)
-        {
-            var market = _currentMarket.GetCurrentMarket();
-            var currency = _currencyservice.GetCurrentCurrency();
-
-            var results = _findClient.Search<GenericProduct>()
-                .Filter(_ => _.VariationModels(), x => x.Code.PrefixCaseInsensitive(query))
-                .FilterMarket(market)
-                .Filter(x => x.Language.Name.Match(_contentLanguageAccessor.Language.Name))
-                .Track()
-                .FilterForVisitor()
-                .Select(_ => _.VariationModels())
-                .GetResult()
-                .SelectMany(x => x)
-                .ToList();
-
-            if (results != null && results.Any())
-            {
-                return results.Select(variation =>
-                {
-                    var defaultPrice = _priceService.GetDefaultPrice(market.MarketId, DateTime.Now,
-                        new CatalogKey(variation.Code), currency);
-                    var discountedPrice = defaultPrice != null ? _promotionService.GetDiscountPrice(defaultPrice.CatalogKey, market.MarketId,
-                        currency) : null;
-                    return new SkuSearchResultModel
-                    {
-                        Sku = variation.Code,
-                        ProductName = string.IsNullOrEmpty(variation.Name) ? "" : variation.Name,
-                        UnitPrice = discountedPrice?.UnitPrice.Amount ?? 0,
-                        UrlImage = variation.DefaultAssetUrl
-                    };
-                });
-            }
-            return Enumerable.Empty<SkuSearchResultModel>();
-        }
+        public IEnumerable<ProductTileViewModel> QuickSearch(FilterOptionViewModel filterOptions, int catalogId = 0)
+            => QuickSearch(filterOptions?.Q ?? "", catalogId);
 
         public IEnumerable<ProductTileViewModel> SearchOnSale(SalesPage currentContent, out List<int> pages, int catalogId = 0, int page = 1, int pageSize = 12)
         {
-            var market = _currentMarket.GetCurrentMarket();
-            var currency = _currencyService.GetCurrentCurrency();
-            var query = BaseInlcusionExclusionQuery(currentContent, catalogId);
-            query = query.Filter(x => (x as GenericProduct).OnSale.Match(true));
-            var result = query.GetContentResult();
-            var searchProducts = CreateProductViewModels(result, currentContent, "").ToList();
-            GetManaualInclusion(searchProducts, currentContent, market, currency);
-            pages = GetPages(currentContent, page, searchProducts.Count);
-            return searchProducts;
+            // Stub: detecting on-sale products requires price+promotion indexing in Graph; not yet implemented.
+            pages = new List<int>();
+            return Enumerable.Empty<ProductTileViewModel>();
         }
 
         public IEnumerable<ProductTileViewModel> SearchNewProducts(NewProductsPage currentContent, out List<int> pages, int catalogId = 0, int page = 1, int pageSize = 12)
         {
-            var market = _currentMarket.GetCurrentMarket();
-            var currency = _currencyService.GetCurrentCurrency();
-            var query = BaseInlcusionExclusionQuery(currentContent, page, pageSize, catalogId);
-            query = query.OrderByDescending(x => x.Created);
-            query = query.Take(currentContent.NumberOfProducts == 0 ? 12 : currentContent.NumberOfProducts);
-            var result = query.GetContentResult();
-            var searchProducts = CreateProductViewModels(result, currentContent, "").ToList();
-            GetManaualInclusion(searchProducts, currentContent, market, currency);
-            pages = GetPages(currentContent, page, searchProducts.Count);
-            return searchProducts;
+            var skip = (page - 1) * pageSize;
+            try
+            {
+                var result = _graphClient
+                    .QueryContent<ProductContent>()
+                    .OrderBy(x => x.Created, OrderDirection.Descending)
+                    .Skip(skip)
+                    .Limit(pageSize)
+                    .IncludeTotal()
+                    .GetAsContentAsync()
+                    .GetAwaiter().GetResult();
+
+                var totalCount = result.Total ?? 0;
+                pages = Enumerable.Range(1, Math.Max(1, (int)Math.Ceiling(totalCount / (double)pageSize))).ToList();
+                return _productService.GetProductTileViewModels(result.Select(p => p.ContentLink));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Graph new-products query failed; falling back to in-memory.");
+                var allProducts = GetCatalogEntries<ProductContent>(_referenceConverter.GetRootLink())
+                    .OrderByDescending(p => p.Created)
+                    .ToList();
+                var totalCount = allProducts.Count;
+                pages = Enumerable.Range(1, Math.Max(1, (int)Math.Ceiling(totalCount / (double)pageSize))).ToList();
+                return _productService.GetProductTileViewModels(
+                    allProducts.Skip(skip).Take(pageSize).Select(p => p.ContentLink));
+            }
         }
+
+        // ── SKU / user search ───────────────────────────────────────────────────────
+
+        public IEnumerable<SkuSearchResultModel> SearchSkus(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+                return Enumerable.Empty<SkuSearchResultModel>();
+
+            return GetCatalogEntries<VariationContent>(_referenceConverter.GetRootLink())
+                .Where(v => v.Code.Contains(query, StringComparison.OrdinalIgnoreCase)
+                         || v.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
+                .Take(10)
+                .Select(v => new SkuSearchResultModel
+                {
+                    Sku = v.Code,
+                    ProductName = v.Name,
+                    UrlImage = string.Empty,
+                    UnitPrice = 0m
+                })
+                .ToList();
+        }
+
+        public IEnumerable<UserSearchResultModel> SearchUsers(string query, int page = 1, int pageSize = 50)
+            => Enumerable.Empty<UserSearchResultModel>();
+
+        // ── Content / PDF search ────────────────────────────────────────────────────
 
         public ContentSearchViewModel SearchContent(FilterOptionViewModel filterOptions)
         {
-            var model = new ContentSearchViewModel
+            var query = filterOptions?.Q;
+            if (string.IsNullOrWhiteSpace(query))
+                return new ContentSearchViewModel { FilterOption = filterOptions, Hits = Enumerable.Empty<UnifiedSearchHit>() };
+
+            try
             {
-                FilterOption = filterOptions
-            };
+                var result = _graphClient
+                    .QueryContent<PageData>()
+                    .SearchFor(query)
+                    .UsingFullText()
+                    .Limit(20)
+                    .GetAsContentAsync()
+                    .GetAwaiter().GetResult();
 
-            if (!filterOptions.Q.IsNullOrEmpty())
-            {
-                var siteId = SiteDefinition.Current.Id;
-                var query = _findClient.UnifiedSearchFor(filterOptions.Q, _findClient.Settings.Languages.GetSupportedLanguage(ContentLanguage.PreferredCulture) ?? Language.None)
-                    .UsingSynonyms()
-                    .TermsFacetFor(x => x.SearchSection)
-                    .FilterFacet("AllSections", x => x.SearchSection.Exists())
-                    .Filter(x => (x.MatchTypeHierarchy(typeof(FoundationPageData)) & (((FoundationPageData)x).SiteId().Match(siteId.ToString())) | (x.MatchTypeHierarchy(typeof(PageData)) & x.MatchTypeHierarchy(typeof(MediaData)))))
-                    .Skip((filterOptions.Page - 1) * filterOptions.PageSize)
-                    .Take(filterOptions.PageSize)
-                    .ApplyBestBets();
-
-                //Include images in search results
-                if (!filterOptions.IncludeImagesContent)
+                return new ContentSearchViewModel
                 {
-                    query = query.Filter(x => !x.MatchType(typeof(ImageMediaData)));
-                }
-
-                //Exclude content from search
-                query = query.Filter(x => !(x as FoundationPageData).ExcludeFromSearch.Exists() | (x as FoundationPageData).ExcludeFromSearch.Match(false));
-
-                // obey DNT
-                var doNotTrackHeader = HttpContextHelper.Current.HttpContext.Request.Headers["DNT"].ToString();
-                if ((doNotTrackHeader == null || doNotTrackHeader.Equals("0")) && filterOptions.TrackData)
-                {
-                    query = query.Track();
-                }
-
-                if (!string.IsNullOrWhiteSpace(filterOptions.SectionFilter))
-                {
-                    query = query.FilterHits(x => x.SearchSection.Match(filterOptions.SectionFilter));
-                }
-
-                var hitSpec = new HitSpecification
-                {
-                    HighlightTitle = true,
-                    HighlightExcerpt = true
+                    FilterOption = filterOptions,
+                    Hits = result.Select(p => new UnifiedSearchHit
+                    {
+                        Title = p.Name,
+                        Url = _urlResolver.GetUrl(p.ContentLink),
+                        Excerpt = string.Empty,
+                        SearchSection = "Pages"
+                    })
                 };
-
-                model.Hits = query.GetResult(hitSpec);
-                filterOptions.TotalCount = model.Hits.TotalMatching;
             }
-
-            return model;
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Graph content search failed; falling back to in-memory.");
+                return SearchContentInMemory(filterOptions);
+            }
         }
 
         public ContentSearchViewModel SearchPdf(FilterOptionViewModel filterOptions)
         {
-            var model = new ContentSearchViewModel
+            var query = filterOptions?.Q;
+            if (string.IsNullOrWhiteSpace(query))
+                return new ContentSearchViewModel { FilterOption = filterOptions, Hits = Enumerable.Empty<UnifiedSearchHit>() };
+
+            try
             {
-                FilterOption = filterOptions
-            };
+                // Fetch extra results and post-filter to PDFs — Graph does not natively filter
+                // by file extension; a MimeType filter can be added once schema mapping is confirmed.
+                var result = _graphClient
+                    .QueryContent<MediaData>()
+                    .SearchFor(query)
+                    .UsingFullText()
+                    .Limit(50)
+                    .GetAsContentAsync()
+                    .GetAwaiter().GetResult();
 
-            if (!filterOptions.Q.IsNullOrEmpty())
-            {
-                var siteId = SiteDefinition.Current.Id;
-                var query = _findClient.UnifiedSearchFor(filterOptions.Q, _findClient.Settings.Languages.GetSupportedLanguage(ContentLanguage.PreferredCulture) ?? Language.None)
-                    .UsingSynonyms()
-                    .TermsFacetFor(x => x.SearchSection)
-                    .FilterFacet("AllSections", x => x.SearchSection.Exists())
-                    .Filter(x => x.MatchTypeHierarchy(typeof(FoundationPdfFile)) | x.MatchTypeHierarchy(typeof(EPiServer.PdfPreview.Models.PdfFile)))              
-                    .Skip((filterOptions.Page - 1) * filterOptions.PageSize)
-                    .Take(filterOptions.PageSize)
-                    .ApplyBestBets();
-
-                // obey DNT
-                var doNotTrackHeader = HttpContextHelper.Current.HttpContext.Request.Headers["DNT"].ToString();
-                if ((doNotTrackHeader == null || doNotTrackHeader.Equals("0")) && filterOptions.TrackData)
+                return new ContentSearchViewModel
                 {
-                    query = query.Track();
-                }
-
-                if (!string.IsNullOrWhiteSpace(filterOptions.SectionFilter))
-                {
-                    query = query.FilterHits(x => x.SearchSection.Match(filterOptions.SectionFilter));
-                }
-
-                var hitSpec = new HitSpecification
-                {
-                    HighlightTitle = true,
-                    HighlightExcerpt = true
+                    FilterOption = filterOptions,
+                    Hits = result
+                        .Where(m => m.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+                        .Take(10)
+                        .Select(m => new UnifiedSearchHit
+                        {
+                            Title = m.Name,
+                            Url = _urlResolver.GetUrl(m.ContentLink),
+                            Excerpt = string.Empty,
+                            SearchSection = "PDF"
+                        })
                 };
-
-                model.Hits = query.GetResult(hitSpec);
-                filterOptions.TotalCount = model.Hits.TotalMatching;
             }
-
-            return model;
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Graph PDF search failed; falling back to in-memory.");
+                return SearchPdfInMemory(filterOptions);
+            }
         }
 
-        public CategorySearchResults SearchByCategory(Pagination pagination)
+        // ── Sort / outline helpers ──────────────────────────────────────────────────
+
+        public IEnumerable<SortOrder> GetSortOrder()
         {
-            if (pagination == null)
+            return new List<SortOrder>
             {
-                pagination = new Pagination();
-            }
-
-            var query = _findClient.Search<FoundationPageData>();
-            query = query.FilterByCategories(pagination.Categories);
-
-            if (pagination.Sort == CategorySorting.PublishedDate.ToString())
-            {
-                if (pagination.SortDirection.ToLower() == "asc")
-                {
-                    query = query.OrderBy(x => x.StartPublish);
-                }
-                else
-                {
-                    query = query.OrderByDescending(x => x.StartPublish);
-                }
-            }
-
-            if (pagination.Sort == CategorySorting.Name.ToString())
-            {
-                if (pagination.SortDirection.ToLower() == "asc")
-                {
-                    query = query.OrderBy(x => x.Name);
-                }
-                else
-                {
-                    query = query.OrderByDescending(x => x.Name);
-                }
-            }
-
-            query = query.Skip((pagination.Page - 1) * pagination.PageSize).Take(pagination.PageSize);
-            var results = query.GetContentResult();
-            var model = new CategorySearchResults
-            {
-                Pagination = pagination,
-                RelatedPages = results
+                new SortOrder { Name = ProductSortOrder.Popularity, Key = "", SortDirection = SortDirection.Ascending },
+                new SortOrder { Name = ProductSortOrder.NewestFirst, Key = "created", SortDirection = SortDirection.Descending }
             };
-            model.Pagination.TotalMatching = results.TotalMatching;
-            model.Pagination.TotalPage = (model.Pagination.TotalMatching / pagination.PageSize) + (model.Pagination.TotalMatching % pagination.PageSize > 0 ? 1 : 0);
-
-            return model;
         }
 
-        public ITypeSearch<T> FilterByCategories<T>(ITypeSearch<T> query, IEnumerable<ContentReference> categories) where T : ICategorizableContent => query.FilterByCategories(categories);
+        public string GetOutline(string nodeCode) => GetOutlineForNode(nodeCode);
 
-        private List<int> GetPages(BaseInclusionExclusionPage currentContent, int page, int count)
+        // ── Private helpers: in-memory fallbacks ────────────────────────────────────
+
+        private ProductSearchResults SearchProductsInMemory(IContent currentContent, FilterOptionViewModel filterOptions, IEnumerable<Func<EntryContentBase, bool>> filters)
         {
-            var pages = new List<int>();
+            var query = filterOptions?.Q ?? "";
+            var page = filterOptions?.Page > 0 ? filterOptions.Page : 1;
+            var pageSize = filterOptions?.PageSize > 0 ? filterOptions.PageSize : 12;
 
-            if (!currentContent.AllowPaging)
-            {
-                return pages;
-            }
+            var rootLink = currentContent is CatalogContentBase
+                ? currentContent.ContentLink
+                : _referenceConverter.GetRootLink();
 
-            var totalPages = (count + currentContent.PageSize - 1) / currentContent.PageSize;
-            pages = new List<int>();
-            var startPage = page > 2 ? page - 2 : 1;
-            for (var p = startPage; p < Math.Min((totalPages >= 5 ? startPage + 5 : startPage + totalPages), totalPages + 1); p++)
-            {
-                pages.Add(p);
-            }
-            return pages;
-        }
+            var allEntries = GetCatalogEntries<ProductContent>(rootLink);
 
-        private static List<T> Shuffle<T>(List<T> list)
-        {
-            var n = list.Count;
-            while (n > 1)
-            {
-                n--;
-                var k = _random.Next(n + 1);
-                var value = list[k];
-                list[k] = list[n];
-                list[n] = value;
-            }
-            return list;
-        }
+            if (!string.IsNullOrWhiteSpace(query))
+                allEntries = allEntries
+                    .Where(e => e.Name.Contains(query, StringComparison.OrdinalIgnoreCase)
+                             || e.Code.Contains(query, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
 
-        private void GetManaualInclusion(List<ProductTileViewModel> results,
-            BaseInclusionExclusionPage baseInclusionExclusionPage,
-            IMarket market,
-            Currency currency)
-        {
-            var currentCount = results.Count;
-            if (baseInclusionExclusionPage.ManualInclusion == null || !baseInclusionExclusionPage.ManualInclusion.Any())
-            {
-                return;
-            }
+            if (filters != null)
+                foreach (var predicate in filters)
+                    allEntries = allEntries.Where(e => predicate(e)).ToList();
 
-            var inclusions = GetManualInclusion(baseInclusionExclusionPage.ManualInclusion).Select(x => x.GetProductTileViewModel(market, currency));
-            if (baseInclusionExclusionPage.ManualInclusionOrdering == InclusionOrdering.Beginning)
-            {
-                results.InsertRange(0, inclusions);
-                results = results.Take(baseInclusionExclusionPage.NumberOfProducts).ToList();
-            }
-            else
-            {
-                var total = currentCount + inclusions.Count();
-                if (total > baseInclusionExclusionPage.NumberOfProducts)
-                {
-                    var num = baseInclusionExclusionPage.NumberOfProducts - inclusions.Count();
-                    results = results.Take(num < 0 ? 0 : num).ToList();
-                    results.AddRange(inclusions);
-                }
-
-                results = results.Take(baseInclusionExclusionPage.NumberOfProducts).ToList();
-
-                if (baseInclusionExclusionPage.ManualInclusionOrdering == InclusionOrdering.Random)
-                {
-                    results = Shuffle(results);
-                }
-                else
-                {
-                    results.AddRange(inclusions);
-                }
-            }
-        }
-
-        private ITypeSearch<EntryContentBase> BaseInlcusionExclusionQuery<T>(T currentContent, int page = 0, int pageSize = 12, int catalogId = 0) where T : BaseInclusionExclusionPage
-        {
-            var market = _currentMarket.GetCurrentMarket();
-            var query = _findClient.Search<EntryContentBase>();
-            query = query.FilterMarket(market);
-            query = query.Filter(x => x.Language.Name.Match(_contentLanguageAccessor.Language.Name));
-            query = query.FilterForVisitor();
-            if (catalogId != 0)
-            {
-                query = query.Filter(x => x.CatalogId.Match(catalogId));
-            }
-
-            //Manual Exclusion
-            if (currentContent.ManualExclusion != null && currentContent.ManualExclusion.Any())
-            {
-                query = ApplyManualExclusion(query, currentContent.ManualExclusion);
-            }
-
-            return query.StaticallyCacheFor(TimeSpan.FromMinutes(1))
-                .Skip((page <= 0 ? 0 : page - 1) * pageSize)
-                .Take(pageSize);
-        }
-
-        private ITypeSearch<EntryContentBase> ApplyManualExclusion(ITypeSearch<EntryContentBase> query, IList<ContentReference> manualExclusion)
-        {
-            foreach (var item in _contentLoader.GetItems(manualExclusion, _contentLanguageAccessor.Language))
-            {
-                if (item.GetOriginalType().Equals(typeof(EPiServer.Commerce.Catalog.ContentTypes.CatalogContent)))
-                {
-                    query = query.Filter(x => !x.CatalogId.Match(((EPiServer.Commerce.Catalog.ContentTypes.CatalogContent)item).CatalogId));
-                }
-                else if (item.GetOriginalType().Equals(typeof(GenericNode)))
-                {
-                    query = query.Filter(x => !x.Ancestors().Match(item.ContentLink.ToString()));
-                }
-                else if (item.GetOriginalType().Equals(typeof(GenericProduct))
-                    || item.GetOriginalType().Equals(typeof(GenericPackage)))
-                {
-                    query = query.Filter(x => !x.ContentGuid.Match(item.ContentGuid));
-                }
-            }
-
-            return query;
-        }
-
-        private IEnumerable<EntryContentBase> GetManualInclusion(IList<ContentReference> manualInclusion)
-        {
-            var results = new List<EntryContentBase>();
-            foreach (var item in _contentLoader.GetItems(manualInclusion, _contentLanguageAccessor.Language))
-            {
-                if (item.GetOriginalType().Equals(typeof(EPiServer.Commerce.Catalog.ContentTypes.CatalogContent)))
-                {
-                    results.AddRange(_findClient.Search<EntryContentBase>()
-                       .Filter(_ => _.CatalogId.Match(((EPiServer.Commerce.Catalog.ContentTypes.CatalogContent)item).CatalogId))
-                       .GetContentResult());
-                }
-                else if (item.GetOriginalType().Equals(typeof(GenericNode)))
-                {
-                    results.AddRange(_findClient.Search<EntryContentBase>()
-                       .Filter(_ => _.Ancestors().Match(((GenericNode)item).ContentLink.ToString()))
-                       .GetContentResult());
-                }
-                else if (item.GetOriginalType().Equals(typeof(GenericProduct))
-                    || item.GetOriginalType().Equals(typeof(GenericPackage)))
-                {
-                    results.Add(item as EntryContentBase);
-                }
-            }
-            return ListExtensions.DistinctBy(results, (e) => e.ContentGuid);
-        }
-
-        private ProductSearchResults GetSearchResults(IContent currentContent,
-            FilterOptionViewModel filterOptions,
-            string selectedfacets,
-            IEnumerable<Filter> filters = null,
-            int catalogId = 0)
-        {
-            //If contact belong organization, only find product that belong the categories that has owner is this organization
-            var contact = PrincipalInfo.CurrentPrincipal.GetCustomerContact();
-            var organizationId = contact?.ContactOrganization?.PrimaryKeyId ?? Guid.Empty;
-            EPiServer.Commerce.Catalog.ContentTypes.CatalogContent catalogOrganization = null;
-            if (organizationId != Guid.Empty)
-            {
-                //get category that has owner id = organizationId
-                catalogOrganization = _contentRepository
-                    .GetChildren<EPiServer.Commerce.Catalog.ContentTypes.CatalogContent>(_referenceConverter.GetRootLink())
-                    .FirstOrDefault(x => !string.IsNullOrEmpty(x.Owner) && x.Owner.Equals(organizationId.ToString(), StringComparison.OrdinalIgnoreCase));
-            }
-
-            var pageSize = filterOptions.PageSize > 0 ? filterOptions.PageSize : DefaultPageSize;
-            var market = _currentMarket.GetCurrentMarket();
-
-            var query = _findClient.Search<EntryContentBase>();
-            query = ApplyTermFilter(query, filterOptions.Q, filterOptions.TrackData);
-            query = query.Filter(x => x.Language.Name.Match(_contentLanguageAccessor.Language.Name));
-
-            if (organizationId != Guid.Empty && catalogOrganization != null)
-            {
-                query = query.Filter(x => x.Outline().PrefixCaseInsensitive(catalogOrganization.Name));
-            }
-
-            var nodeContent = currentContent as NodeContent;
-            if (nodeContent != null)
-            {
-                var outline = GetOutline(nodeContent.Code);
-                query = query.FilterOutline(new[] { outline });
-            }
-
-            query = query.FilterMarket(market);
-            var facetQuery = query;
-
-            query = FilterSelected(query, filterOptions.FacetGroups);
-            query = ApplyFilters(query, filters);
-            if ((filterOptions.Sort == "Position" || filterOptions.Sort == "Recommended")
-                    && filterOptions.SortDirection == "Asc")
-            {
-                query = query.BoostMatching(x => (x as GenericProduct).Boost.Match(2), 1.05);
-                query = query.BoostMatching(x => (x as GenericProduct).Boost.Match(3), 1.1);
-                query = query.BoostMatching(x => (x as GenericProduct).Boost.Match(4), 1.15);
-                query = query.BoostMatching(x => (x as GenericProduct).Boost.Match(5), 1.2);
-                query = query.ThenByScore();
-            } else
-            {
-                query = OrderBy(query, filterOptions);
-            }
-
-            //Exclude products from search
-            query = query.Filter(x => (x as GenericProduct).Bury.Match(false));
-
-            if (catalogId != 0)
-            {
-                query = query.Filter(x => x.CatalogId.Match(catalogId));
-            }
-
-            query = query.ApplyBestBets()
-                .PublishedInCurrentLanguage()
-                .FilterForVisitor()
-                .Skip((filterOptions.Page - 1) * pageSize)
-                .Take(pageSize)
-                .StaticallyCacheFor(TimeSpan.FromMinutes(1));
-
-            var result = query.GetContentResult();
+            var totalCount = allEntries.Count;
+            var paged = allEntries.Skip((page - 1) * pageSize).Take(pageSize).ToList();
 
             return new ProductSearchResults
             {
-                ProductViewModels = CreateProductViewModels(result, currentContent, filterOptions.Q),
-                FacetGroups = GetFacetResults(filterOptions.FacetGroups, facetQuery, selectedfacets),
-                TotalCount = result.TotalMatching,
-                DidYouMeans = string.IsNullOrEmpty(filterOptions.Q) ? null : result.TotalMatching != 0 ? null : _findClient.Statistics().GetDidYouMean(filterOptions.Q),
-                Query = filterOptions.Q,
+                ProductViewModels = _productService.GetProductTileViewModels(paged.Select(e => e.ContentLink)),
+                FacetGroups = Enumerable.Empty<FacetGroupOption>(),
+                TotalCount = totalCount,
+                Query = query
             };
         }
 
-        public IEnumerable<ProductTileViewModel> CreateProductViewModels(IContentResult<EntryContentBase> searchResult, IContent content, string searchQuery)
+        private ContentSearchViewModel SearchContentInMemory(FilterOptionViewModel filterOptions)
         {
-            List<ProductTileViewModel> productViewModels = null;
-            var market = _currentMarket.GetCurrentMarket();
-            var currency = _currencyService.GetCurrentCurrency();
-
-            if (searchResult == null)
-            {
-                throw new ArgumentNullException(nameof(searchResult));
-            }
-
-            productViewModels = searchResult.Select(document => document.GetProductTileViewModel(market, currency)).ToList();
-            ApplyBoostedProperties(ref productViewModels, searchResult, content, searchQuery);
-            return productViewModels;
+            var query = filterOptions.Q;
+            var hits = _contentLoader.GetDescendents(ContentReference.RootPage)
+                .Select(r => { try { return _contentLoader.Get<IContent>(r); } catch { return null; } })
+                .OfType<PageData>()
+                .Where(p => !p.IsDeleted && p.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
+                .Take(20)
+                .Select(p => new UnifiedSearchHit
+                {
+                    Title = p.Name,
+                    Url = _urlResolver.GetUrl(p.ContentLink),
+                    Excerpt = string.Empty,
+                    SearchSection = "Pages"
+                });
+            return new ContentSearchViewModel { FilterOption = filterOptions, Hits = hits };
         }
 
-        public virtual StringCollection GetOutlinesForNode(string code)
+        private ContentSearchViewModel SearchPdfInMemory(FilterOptionViewModel filterOptions)
         {
-            var nodes = SearchFilterHelper.GetOutlinesForNode(code);
-            if (nodes.Count == 0)
-            {
-                return nodes;
-            }
-            nodes[nodes.Count - 1] = nodes[nodes.Count - 1].Replace("*", "");
-            return nodes;
+            var query = filterOptions.Q;
+            var hits = _contentLoader.GetDescendents(ContentReference.RootPage)
+                .Select(r => { try { return _contentLoader.Get<IContent>(r); } catch { return null; } })
+                .OfType<MediaData>()
+                .Where(m => m.Name.Contains(query, StringComparison.OrdinalIgnoreCase)
+                         && m.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+                .Take(10)
+                .Select(m => new UnifiedSearchHit
+                {
+                    Title = m.Name,
+                    Url = _urlResolver.GetUrl(m.ContentLink),
+                    Excerpt = string.Empty,
+                    SearchSection = "PDF"
+                });
+            return new ContentSearchViewModel { FilterOption = filterOptions, Hits = hits };
         }
 
-        public virtual string GetOutline(string nodeCode) => GetOutlineForNode(nodeCode);
+        /// <summary>
+        /// Returns all catalog descendants of <paramref name="rootLink"/> that are of type <typeparamref name="T"/>.
+        /// Uses Get&lt;EntryContentBase&gt; (not Get&lt;IContent&gt;) — Commerce 15 content provider
+        /// requires an entry-specific type; Get&lt;IContent&gt; may return a non-castable proxy.
+        /// </summary>
+        private List<T> GetCatalogEntries<T>(ContentReference rootLink) where T : class, IContent
+        {
+            return _contentLoader.GetDescendents(rootLink)
+                .Select(r =>
+                {
+                    try { return _contentLoader.Get<EntryContentBase>(r) as T; }
+                    catch { return null; }
+                })
+                .Where(e => e != null && !e.IsDeleted)
+                .ToList();
+        }
 
         private string GetOutlineForNode(string nodeCode)
         {
             if (string.IsNullOrEmpty(nodeCode))
-            {
                 return "";
-            }
+
             var outline = nodeCode;
             var currentNode = _contentRepository.Get<NodeContent>(_referenceConverter.GetContentLink(nodeCode));
             var parent = _contentRepository.Get<CatalogContentBase>(currentNode.ParentLink);
             while (!ContentReference.IsNullOrEmpty(parent.ParentLink))
             {
-                var catalog = parent as EPiServer.Commerce.Catalog.ContentTypes.CatalogContent;
-                if (catalog != null)
-                {
-                    outline = string.Format("{1}/{0}", outline, catalog.Name);
-                }
-
-                var parentNode = parent as NodeContent;
-                if (parentNode != null)
-                {
-                    outline = string.Format("{1}/{0}", outline, parentNode.Code);
-                }
+                if (parent is EPiServer.Commerce.Catalog.ContentTypes.CatalogContent catalog)
+                    outline = $"{catalog.Name}/{outline}";
+                else if (parent is NodeContent parentNode)
+                    outline = $"{parentNode.Code}/{outline}";
 
                 parent = _contentRepository.Get<CatalogContentBase>(parent.ParentLink);
             }
             return outline;
-        }
-
-        private static ITypeSearch<EntryContentBase> ApplyTermFilter(ITypeSearch<EntryContentBase> query, string searchTerm, bool trackData)
-        {
-            if (string.IsNullOrEmpty(searchTerm))
-            {
-                return query;
-            }
-
-            query = query.For(searchTerm).UsingSynonyms();
-            if (trackData)
-            {
-                query = query.Track();
-            }
-
-            return query;
-        }
-
-        private ITypeSearch<EntryContentBase> OrderBy(ITypeSearch<EntryContentBase> query, FilterOptionViewModel commerceFilterOptionViewModel)
-        {
-            if (string.IsNullOrEmpty(commerceFilterOptionViewModel.Sort) || commerceFilterOptionViewModel.Sort.Equals("Position"))
-            {
-                if (commerceFilterOptionViewModel.SortDirection.Equals("Asc"))
-                {
-                    query = query.OrderBy(x => x.SortOrder());
-                    return query;
-                }
-                query = query.OrderByDescending(x => x.SortOrder());
-                return query;
-            }
-
-            if (commerceFilterOptionViewModel.Sort.Equals("Price"))
-            {
-                if (commerceFilterOptionViewModel.SortDirection.Equals("Asc"))
-                {
-                    query = query.OrderBy(x => x.DefaultPrice());
-                    query = query.ThenByScore();
-                    return query;
-                }
-                query = query.OrderByDescending(x => x.DefaultPrice());
-                return query;
-            }
-
-            if (commerceFilterOptionViewModel.Sort.Equals("Name"))
-            {
-                if (commerceFilterOptionViewModel.SortDirection.Equals("Asc"))
-                {
-                    query = query.OrderBy(x => x.DisplayName);
-                    return query;
-                }
-                query = query.OrderByDescending(x => x.DisplayName);
-                return query;
-            }
-
-            //if (CommerceFilterOptionViewModel.Sort.Equals("Recommended"))
-            //{
-            //    query = query.UsingPersonalization();
-            //    return query;
-            //}
-
-            return query;
-        }
-
-        private IEnumerable<FacetGroupOption> GetFacetResults(List<FacetGroupOption> options,
-            ITypeSearch<EntryContentBase> query,
-            string selectedfacets)
-        {
-            if (options == null)
-            {
-                return Enumerable.Empty<FacetGroupOption>();
-            }
-
-            var facets = _facetRegistry.GetFacetDefinitions();
-            var facetGroups = facets.Select(x => new FacetGroupOption
-            {
-                GroupFieldName = x.FieldName,
-                GroupName = x.DisplayName,
-            }).ToList();
-
-            query = facets.Aggregate(query, (current, facet) => facet.Facet(current, GetSelectedFilter(options, facet.FieldName)));
-
-            var productFacetsResult = query.Take(0).GetContentResult();
-            if (productFacetsResult.Facets == null)
-            {
-                return facetGroups;
-            }
-
-            foreach (var facetGroup in facetGroups)
-            {
-                var filter = facets.FirstOrDefault(x => x.FieldName.Equals(facetGroup.GroupFieldName));
-                if (filter == null)
-                {
-                    continue;
-                }
-
-                var facet = productFacetsResult.Facets.FirstOrDefault(x => x.Name.Equals(facetGroup.GroupFieldName));
-                if (facet == null)
-                {
-                    continue;
-                }
-
-                filter.PopulateFacet(facetGroup, facet, selectedfacets);
-            }
-            return facetGroups;
-        }
-
-        private Filter GetSelectedFilter(List<FacetGroupOption> options, string currentField)
-        {
-            var filters = new List<Filter>();
-            var facets = _facetRegistry.GetFacetDefinitions();
-            foreach (var facetGroupOption in options)
-            {
-                if (facetGroupOption.GroupFieldName.Equals(currentField))
-                {
-                    continue;
-                }
-
-                var filter = facets.FirstOrDefault(x => x.FieldName.Equals(facetGroupOption.GroupFieldName));
-                if (filter == null)
-                {
-                    continue;
-                }
-
-                if (!facetGroupOption.Facets.Any(x => x.Selected))
-                {
-                    continue;
-                }
-
-                if (filter is FacetStringDefinition)
-                {
-                    filters.Add(new TermsFilter(_findClient.GetFullFieldName(facetGroupOption.GroupFieldName, typeof(string)),
-                        facetGroupOption.Facets.Where(x => x.Selected).Select(x => FieldFilterValue.Create(x.Name))));
-                }
-                else if (filter is FacetStringListDefinition)
-                {
-                    var termFilters = facetGroupOption.Facets.Where(x => x.Selected)
-                        .Select(s => new TermFilter(facetGroupOption.GroupFieldName, FieldFilterValue.Create(s.Name)))
-                        .Cast<Filter>()
-                        .ToList();
-
-                    filters.AddRange(termFilters);
-                }
-                else if (filter is FacetNumericRangeDefinition)
-                {
-                    var rangeFilters = filter as FacetNumericRangeDefinition;
-                    foreach (var selectedRange in facetGroupOption.Facets.Where(x => x.Selected))
-                    {
-                        var rangeFilter = rangeFilters.Range.FirstOrDefault(x => x.Id.Equals(selectedRange.Key.Split(':')[1]));
-                        if (rangeFilter == null)
-                        {
-                            continue;
-                        }
-                        filters.Add(RangeFilter.Create(_findClient.GetFullFieldName(facetGroupOption.GroupFieldName, typeof(double)),
-                            rangeFilter.From ?? 0,
-                            rangeFilter.To ?? double.MaxValue));
-                    }
-                }
-            }
-
-            if (!filters.Any())
-            {
-                return null;
-            }
-
-            if (filters.Count == 1)
-            {
-                return filters.FirstOrDefault();
-            }
-
-            var boolFilter = new BoolFilter();
-            foreach (var filter in filters)
-            {
-                boolFilter.Should.Add(filter);
-            }
-            return boolFilter;
-        }
-
-        private ITypeSearch<T> FilterSelected<T>(ITypeSearch<T> query, List<FacetGroupOption> options)
-        {
-            var facets = _facetRegistry.GetFacetDefinitions();
-
-            foreach (var facetGroupOption in options)
-            {
-                var filter = facets.FirstOrDefault(x => x.FieldName.Equals(facetGroupOption.GroupFieldName));
-                if (filter == null)
-                {
-                    continue;
-                }
-
-                if (facetGroupOption.Facets != null && !facetGroupOption.Facets.Any(x => x.Selected))
-                {
-                    continue;
-                }
-
-                if (filter is FacetStringDefinition)
-                {
-                    var stringFilter = filter as FacetStringDefinition;
-                    query = stringFilter.Filter(query, facetGroupOption.Facets
-                        .Where(x => x.Selected)
-                        .Select(x => x.Name).ToList());
-                }
-                else if (filter is FacetStringListDefinition)
-                {
-                    var stringListFilter = filter as FacetStringListDefinition;
-                    query = stringListFilter.Filter(query, facetGroupOption.Facets
-                        .Where(x => x.Selected)
-                        .Select(x => x.Name).ToList());
-                }
-                else if (filter is FacetNumericRangeDefinition)
-                {
-                    var numericFilter = filter as FacetNumericRangeDefinition;
-                    var ranges = new List<SelectableNumericRange>();
-                    var selectedFacets = facetGroupOption.Facets.Where(x => x.Selected);
-                    foreach (var facetOption in selectedFacets)
-                    {
-                        var range = numericFilter.Range.FirstOrDefault(x => x.Id.Equals(facetOption.Key.Split(':')[1]));
-                        if (range == null)
-                        {
-                            continue;
-                        }
-                        ranges.Add(new SelectableNumericRange
-                        {
-                            From = range.From,
-                            Id = range.Id,
-                            Selected = range.Selected,
-                            To = range.To
-                        });
-                    }
-
-                    query = numericFilter.Filter(query, ranges);
-                }
-            }
-            return query;
-        }
-
-        private ITypeSearch<EntryContentBase> ApplyFilters(ITypeSearch<EntryContentBase> query,
-            IEnumerable<Filter> filters)
-        {
-            if (filters == null || !filters.Any())
-            {
-                return query;
-            }
-
-            foreach (var filter in filters)
-            {
-                query = query.Filter(filter);
-            }
-            return query;
-        }
-
-        private static ProductSearchResults CreateEmptyResult()
-        {
-            return new ProductSearchResults
-            {
-                ProductViewModels = Enumerable.Empty<ProductTileViewModel>(),
-                FacetGroups = Enumerable.Empty<FacetGroupOption>(),
-            };
-        }
-
-        /// <summary>
-        /// Sets Featured Product property and Best Bet Product property to ProductViewModels.
-        /// </summary>
-        /// <param name="productViewModels">The ProductViewModels is added two properties: Featured Product and Best Bet.</param>
-        /// <param name="searchResult">The search result (product list).</param>
-        /// <param name="currentContent">The product category.</param>
-        /// <param name="searchQuery">The search query string to filter Best Bet result.</param>
-        private void ApplyBoostedProperties(ref List<ProductTileViewModel> productViewModels, IContentResult<EntryContentBase> searchResult, IContent currentContent, string searchQuery)
-        {
-            var node = currentContent as GenericNode;
-            var products = new List<EntryContentBase>();
-
-            if (node != null)
-            {
-                UpdateListWithFeatured(ref productViewModels, node);
-            }
-
-            var bestBetList = _bestBetRepository.List().Where(i => i.PhraseCriterion.Phrase.CompareTo(searchQuery) == 0);
-            //Filter for product best bet only.
-            var productBestBet = bestBetList.Where(i => i.BestBetSelector is CommerceBestBetSelector);
-            var ownStyleBestBet = bestBetList.Where(i => i.BestBetSelector is CommerceBestBetSelector && i.HasOwnStyle);
-            productViewModels.ToList()
-                             .ForEach(p =>
-                             {
-                                 if (productBestBet.Any(i => ((CommerceBestBetSelector)i.BestBetSelector).ContentLink.ID == p.ProductId))
-                                 {
-                                     p.IsBestBetProduct = true;
-                                 }
-                                 if (ownStyleBestBet.Any(i => ((CommerceBestBetSelector)i.BestBetSelector).ContentLink.ID == p.ProductId))
-                                 {
-                                     p.HasBestBetStyle = true;
-                                 }
-                             });
-        }
-
-        private void UpdateListWithFeatured(ref List<ProductTileViewModel> productViewModels, GenericNode node)
-        {
-            if (!node.FeaturedProducts?.FilteredItems?.Any() ?? true)
-            {
-                return;
-            }
-            var market = _currentMarket.GetCurrentMarket();
-            var currency = _currencyService.GetCurrentCurrency();
-            var index = 0;
-            foreach (var item in node.FeaturedProducts.FilteredItems)
-            {
-                var content = item.GetContent();
-                if (content is EntryContentBase featuredEntry)
-                {
-                    if (productViewModels.Any(x => x.Code.Equals(featuredEntry.Code)))
-                    {
-                        productViewModels.RemoveAt(productViewModels.IndexOf(productViewModels.First(x => x.Code.Equals(featuredEntry.Code))));
-                    }
-                    else
-                    {
-                        productViewModels.RemoveAt(productViewModels.IndexOf(productViewModels.Last()));
-                    }
-
-                    productViewModels.Insert(index, featuredEntry.GetProductTileViewModel(market, currency, true));
-                    index++;
-                }
-                else if (content is GenericNode featuredNode)
-                {
-                    foreach (var nodeEntry in _contentLoader.GetChildren<EntryContentBase>(content.ContentLink)
-                        .Where(x => !(x is VariationContent))
-                        .Take(featuredNode.PartialPageSize))
-                    {
-                        if (productViewModels.Any(x => x.Code.Equals(nodeEntry.Code)))
-                        {
-                            productViewModels.RemoveAt(productViewModels.IndexOf(productViewModels.First(x => x.Code.Equals(nodeEntry.Code))));
-                        }
-                        else
-                        {
-                            productViewModels.RemoveAt(productViewModels.IndexOf(productViewModels.Last()));
-                        }
-                        productViewModels.Insert(index, nodeEntry.GetProductTileViewModel(market, currency, true));
-                        index++;
-                    }
-                }
-            }
         }
     }
 }

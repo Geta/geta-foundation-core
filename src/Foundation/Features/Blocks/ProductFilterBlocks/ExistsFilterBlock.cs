@@ -1,25 +1,26 @@
-using EPiServer.Find.Api.Querying;
-using EPiServer.Find.Api.Querying.Filters;
-using EPiServer.Find.Framework;
-using Foundation.Infrastructure.Find;
+using EPiServer.Commerce.Catalog.ContentTypes;
+using System.Reflection;
 
 namespace Foundation.Features.Blocks.ProductFilterBlocks
 {
     [ContentType(DisplayName = "Exists Filter Block",
         GUID = "E93C9A50-4B62-4116-8E56-1DF84AB93EF7",
-        Description = "Filter product that has a value for the given field",
+        Description = "Filter products that have a value for the given field",
         GroupName = "Commerce")]
     [ImageUrl("/icons/cms/pages/CMS-icon-page-14.png")]
     public class ExistsFilterBlock : FilterBaseBlock
     {
-        public override Filter GetFilter()
+        public override Func<EntryContentBase, bool> GetPredicate()
         {
             if (string.IsNullOrEmpty(FieldName))
-            {
                 return null;
-            }
-            var fullFieldName = SearchClient.Instance.GetFullFieldName(FieldName);
-            return new ExistsFilter(fullFieldName);
+
+            return entry =>
+            {
+                var prop = entry.GetType().GetProperty(FieldName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+                var val = prop?.GetValue(entry);
+                return val != null && !string.IsNullOrEmpty(val.ToString());
+            };
         }
     }
 }

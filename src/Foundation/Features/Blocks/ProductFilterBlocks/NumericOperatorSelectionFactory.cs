@@ -12,11 +12,11 @@ namespace Foundation.Features.Blocks.ProductFilterBlocks
         public virtual IEnumerable<ISelectItem> GetSelections(ExtendedMetadata metadata)
         {
             return new ISelectItem[]
-             {
+            {
                 new SelectItem { Text = "Equals", Value = OperatorNames.Equal },
                 new SelectItem { Text = "Greater Than", Value = OperatorNames.GreaterThan },
                 new SelectItem { Text = "Less Than", Value = OperatorNames.LessThan },
-             };
+            };
         }
     }
 }

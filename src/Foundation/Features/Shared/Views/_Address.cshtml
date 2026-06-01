@@ -6,7 +6,8 @@
     <p>
         @{
             string[] addressValues = null;
-            System.Text.RegularExpressions.Regex email = EPiServer.Framework.Validator.EmailRegex;
+            // CMS 13: EPiServer.Framework.Validator obsolete. Use standard .NET Regex instead.
+            System.Text.RegularExpressions.Regex email = new System.Text.RegularExpressions.Regex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
             switch (Model.CountryCode)
             {

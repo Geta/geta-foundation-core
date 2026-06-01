@@ -2,10 +2,11 @@
 //using EPiBootstrapArea.Initialization;
 using EPiServer.Commerce.Internal.Migration;
 using EPiServer.Commerce.Marketing.Internal;
-using EPiServer.Find.ClientConventions;
-using EPiServer.Find.Commerce;
-using EPiServer.Find.Framework;
-using EPiServer.Find.UnifiedSearch;
+// EPiServer.Find removed: no CMS 13 version. Phase 4 will replace with Graph.
+// using EPiServer.Find.ClientConventions;
+// using EPiServer.Find.Commerce;
+// using EPiServer.Find.Framework;
+// using EPiServer.Find.UnifiedSearch;
 using EPiServer.Framework;
 using EPiServer.Framework.Initialization;
 using EPiServer.Shell.ContentQuery;
@@ -19,8 +20,9 @@ using Foundation.Features.Checkout.Services;
 using Foundation.Features.Checkout.ViewModels;
 using Foundation.Features.Header;
 using Foundation.Features.Home;
-using Foundation.Features.Locations.LocationItemPage;
-using Foundation.Features.Locations.LocationListPage;
+// Locations excluded from compilation: depends on EPiServer.Find geo-search (no CMS 13 version).
+// using Foundation.Features.Locations.LocationItemPage;
+// using Foundation.Features.Locations.LocationListPage;
 using Foundation.Features.MyAccount.AddressBook;
 using Foundation.Features.MyAccount.Bookmarks;
 using Foundation.Features.MyAccount.CreditCard;
@@ -35,14 +37,12 @@ using Foundation.Infrastructure.Commerce.GiftCard;
 using Foundation.Infrastructure.Display;
 using Foundation.Infrastructure.Find.Facets;
 using Foundation.Infrastructure.Find.Facets.Config;
-using Foundation.Infrastructure.PowerSlices;
 using Foundation.Infrastructure.SchemaMarkup;
 using Mediachase.Commerce.Orders;
 using Mediachase.MetaDataPlus.Configurator;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.Extensions.DependencyInjection;
-using PowerSlice;
 
 namespace Foundation.Infrastructure
 {
@@ -66,7 +66,9 @@ namespace Foundation.Infrastructure
             });
 
             //_services.AddSingleton<IDisplayModeFallbackProvider, FoundationDisplayModeProvider>();
-            _services.AddTransient<IQuickNavigatorItemProvider, FoundationQuickNavigatorItemProvider>();
+            // CMS 13: FoundationQuickNavigatorItemProvider removed — Paths.ToResource requires Foundation
+            // to be a registered Shell module, which it is not. Built-in CMS quick nav is sufficient.
+            //_services.AddTransient<IQuickNavigatorItemProvider, FoundationQuickNavigatorItemProvider>();
             _services.AddTransient<IViewTemplateModelRegistrator, ViewTemplateModelRegistrator>();
             _services.AddSingleton<DefaultPlacedPriceProcessor, FoundationPlacedPriceProcessor>();
             _services.AddSingleton<ISearchViewModelFactory, SearchViewModelFactory>();
@@ -106,48 +108,16 @@ namespace Foundation.Infrastructure
             _services.AddTransient<IPaymentMethod, GenericCreditCardPaymentOption>();
             _services.AddTransient<IPaymentMethod, GiftCardPaymentOption>();
             _services.AddSingleton<ISearchService, SearchService>();
-            _services.AddSingleton<CatalogContentClientConventions, FoundationFindConventions>();
-            _services.AddSingleton<CatalogContentEventListener, FoundationCatalogContentEventListener>();
-            _services.AddTransient<IContentQuery, LandingPagesSlice>();
-            _services.AddTransient<IContentSlice, LandingPagesSlice>();
-            _services.AddTransient<IContentQuery, StandardPagesSlice>();
-            _services.AddTransient<IContentSlice, StandardPagesSlice>();
-            _services.AddTransient<IContentQuery, BlogsSlice>();
-            _services.AddTransient<IContentSlice, BlogsSlice>();
-            _services.AddTransient<IContentQuery, BlocksSlice>();
-            _services.AddTransient<IContentSlice, BlocksSlice>();
-            _services.AddTransient<IContentQuery, MediaSlice>();
-            _services.AddTransient<IContentSlice, MediaSlice>();
-            _services.AddTransient<IContentQuery, ImagesSlice>();
-            _services.AddTransient<IContentSlice, ImagesSlice>();
-            _services.AddTransient<IContentQuery, EverythingSlice>();
-            _services.AddTransient<IContentSlice, EverythingSlice>();
-            _services.AddTransient<IContentQuery, MyContentSlice>();
-            _services.AddTransient<IContentSlice, MyContentSlice>();
-            _services.AddTransient<IContentQuery, MyPagesSlice>();
-            _services.AddTransient<IContentSlice, MyPagesSlice>();
-            _services.AddTransient<IContentQuery, UnusedMediaSlice>();
-            _services.AddTransient<IContentSlice, UnusedMediaSlice>();
-            _services.AddTransient<IContentQuery, UnusedBlocksSlice>();
-            _services.AddTransient<IContentSlice, UnusedBlocksSlice>();
-            _services.AddTransient<IContentQuery, ProductsSlice>();
-            _services.AddTransient<IContentSlice, ProductsSlice>();
-            _services.AddTransient<IContentQuery, PackagesSlice>();
-            _services.AddTransient<IContentSlice, PackagesSlice>();
-            _services.AddTransient<IContentQuery, BundlesSlice>();
-            _services.AddTransient<IContentSlice, BundlesSlice>();
-            _services.AddTransient<IContentQuery, VariantsSlice>();
-            _services.AddTransient<IContentSlice, VariantsSlice>();
-            _services.AddTransient<IContentQuery, OrderPromotionsSlice>();
-            _services.AddTransient<IContentSlice, OrderPromotionsSlice>();
-            _services.AddTransient<IContentQuery, ShippingPromotionsSlice>();
-            _services.AddTransient<IContentSlice, ShippingPromotionsSlice>();
-            _services.AddTransient<IContentQuery, EntryPromotionsSlice>();
-            _services.AddTransient<IContentSlice, EntryPromotionsSlice>();
+            // EPiServer.Find removed: CatalogContentClientConventions (EPiServer.Find.Commerce) and
+            // FoundationFindConventions / FoundationCatalogContentEventListener (Infrastructure/Find, excluded) removed.
+            // _services.AddSingleton<CatalogContentClientConventions, FoundationFindConventions>();
+            // _services.AddSingleton<CatalogContentEventListener, FoundationCatalogContentEventListener>();
+            // PowerSlice registrations removed: PowerSlice has no CMS 13 version.
             _services.AddSingleton<ISchemaDataMapper<BlogItemPage>, BlogItemPageSchemaMapper>();
             _services.AddSingleton<ISchemaDataMapper<HomePage>, HomePageSchemaMapper>();
             _services.AddSingleton<ISchemaDataMapper<GenericProduct>, GenericProductSchemaDataMapper>();
-            _services.AddSingleton<ISchemaDataMapper<LocationItemPage>, LocationItemPageSchemaDataMapper>();
+            // LocationItemPage excluded from compilation (Locations depends on Find geo-search).
+            // _services.AddSingleton<ISchemaDataMapper<LocationItemPage>, LocationItemPageSchemaDataMapper>();
             _services.AddSingleton<PromotionEngineContentLoader, FoundationPromotionEngineContentLoader>();
         }
 
@@ -165,11 +135,11 @@ namespace Foundation.Infrastructure
             context.InitComplete += ContextOnInitComplete;
             context.InitComplete += AddMetaFieldLineItem;
 
-            SearchClient.Instance.Conventions.UnifiedSearchRegistry
-                .ForInstanceOf<LocationListPage>()
-                .ProjectImageUriFrom(page => new Uri(context.Locate.Advanced.GetInstance<UrlResolver>().GetUrl(page.PageImage), UriKind.Relative));
-
-            SearchClient.Instance.Conventions.ForInstancesOf<LocationItemPage>().IncludeField(dp => dp.TagString());
+            // EPiServer.Find removed: SearchClient conventions removed. Phase 4 will add Graph conventions.
+            // SearchClient.Instance.Conventions.UnifiedSearchRegistry
+            //     .ForInstanceOf<LocationListPage>()
+            //     .ProjectImageUriFrom(page => new Uri(context.Locate.Advanced.GetInstance<UrlResolver>().GetUrl(page.PageImage), UriKind.Relative));
+            // SearchClient.Instance.Conventions.ForInstancesOf<LocationItemPage>().IncludeField(dp => dp.TagString());
         }
 
         public void Uninitialize(InitializationEngine context)
@@ -182,11 +152,9 @@ namespace Foundation.Infrastructure
         private void ContextOnInitComplete(object sender, EventArgs eventArgs)
         {
             //_services.AddTransient<ContentAreaRenderer, FoundationContentAreaRenderer>();
-            var settings = _locator.GetInstance<ISettingsService>().GetSiteSettings<SearchSettings>();
-            if (settings != null)
-            {
-                InitializeFacets(settings.SearchFiltersConfiguration);
-            }
+            // Phase 4 TODO: restore facet initialization when SearchFiltersConfiguration is re-added for Graph.
+            // var settings = _locator.GetInstance<ISettingsService>().GetSiteSettings<SearchSettings>();
+            // if (settings != null) { InitializeFacets(settings.SearchFiltersConfiguration); }
 
             _locator.GetInstance<IContentEvents>().PublishedContent += OnPublishedContent;
         }

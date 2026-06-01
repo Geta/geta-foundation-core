@@ -79,6 +79,10 @@ Setup*.log
 Build/Logs/*.log
 src/appdata/*
 src/Foundation/License.config
+
+# Secrets — never commit real credentials
+# Real values go in appsettings.Development.json; DXP injects them in hosted environments.
+src/Foundation/appsettings.Development.json
 rebuild.cmd
 resetup.cmd
 src/Foundation/App_Data/
@@ -88,5 +92,4 @@ src/Foundation/modules/
 /src/Foundation/wwwroot/scss/main.min.css
 /src/Foundation/wwwroot/scss/main.min.css.map
 /log.txt
-src/Foundation/wwwroot
-src/Foundation/package-lock.json
+/.claude/settings.local.json

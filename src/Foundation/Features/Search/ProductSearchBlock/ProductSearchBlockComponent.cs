@@ -1,68 +1,70 @@
-﻿using EPiServer.Commerce.Reporting.Order.Internal.DataAccess;
-using EPiServer.Commerce.Reporting.Order.ReportingModels;
-using EPiServer.Find;
-using EPiServer.Find.Api.Querying.Filters;
+using EPiServer.Commerce.Catalog.ContentTypes;
 using Foundation.Features.Blocks.ProductFilterBlocks;
 using Foundation.Features.CatalogContent;
-using Foundation.Infrastructure.Commerce.Models.EditorDescriptors;
 using Foundation.Infrastructure.Find.Facets;
-//using Foundation.Social.Services;
-using System.Configuration;
 
 namespace Foundation.Features.Search.ProductSearchBlock
 {
     public class ProductSearchBlockComponent : AsyncBlockComponent<ProductSearchBlock>
     {
-        private readonly LanguageService _languageService;
-        //private readonly IReviewService _reviewService;
-        private readonly ICurrentMarket _currentMarket;
-        private readonly ICurrencyService _currencyService;
         private readonly ISearchService _searchService;
-        private readonly ReportingDataLoader _reportingDataLoader;
+        private readonly IContentLoader _contentLoader;
 
-        public ProductSearchBlockComponent(LanguageService languageService,
-            //IReviewService reviewService,
-            ICurrentMarket currentMarket,
-            ICurrencyService currencyService,
-            ISearchService searchService,
-            ReportingDataLoader reportingDataLoader)
+        public ProductSearchBlockComponent(ISearchService searchService, IContentLoader contentLoader)
         {
-            _languageService = languageService;
-            //_reviewService = reviewService;
-            _currentMarket = currentMarket;
-            _currencyService = currencyService;
             _searchService = searchService;
-            _reportingDataLoader = reportingDataLoader;
+            _contentLoader = contentLoader;
         }
 
         protected override async Task<IViewComponentResult> InvokeComponentAsync(ProductSearchBlock currentBlock)
         {
-            var currentLang = _languageService.GetCurrentLanguage();
+            var filterOptions = new FilterOptionViewModel
+            {
+                Q = currentBlock.SearchTerm,
+                PageSize = currentBlock.ResultsPerPage > 0 ? currentBlock.ResultsPerPage : 6,
+                Sort = string.Empty,
+                FacetGroups = new List<FacetGroupOption>(),
+                Page = 1
+            };
 
-            ProductSearchResults result;
-            try
+            // Use the first configured catalog node as the search root so results
+            // are scoped to the block's assigned category (e.g. Womens, Mens).
+            // Falls back to null (catalog root) when no node is configured.
+            IContent searchRoot = null;
+            if (currentBlock.Nodes?.Items != null)
             {
-                result = GetSearchResults(currentLang.Name, currentBlock);
-            }
-            catch (ServiceException)
-            {
-                return await Task.FromResult(View("~/Features/Search/ProductSearchBlock/FindError.cshtml"));
-            }
-
-            if (result == null)
-            {
-                result = new ProductSearchResults
+                foreach (var item in currentBlock.Nodes.Items)
                 {
-                    ProductViewModels = Enumerable.Empty<ProductTileViewModel>(),
-                    FacetGroups = Enumerable.Empty<FacetGroupOption>()
-                };
+                    try
+                    {
+                        var node = _contentLoader.Get<NodeContent>(item.ContentLink);
+                        if (node != null) { searchRoot = node; break; }
+                    }
+                    catch { }
+                }
             }
 
-            SortProducts(currentBlock, result);
+            // Collect filter predicates from any FilterBaseBlock instances in the Filters ContentArea.
+            var predicates = new List<Func<EntryContentBase, bool>>();
+            if (currentBlock.Filters?.Items != null)
+            {
+                foreach (var item in currentBlock.Filters.Items)
+                {
+                    try
+                    {
+                        var filterBlock = _contentLoader.Get<FilterBaseBlock>(item.ContentLink);
+                        var predicate = filterBlock?.GetPredicate();
+                        if (predicate != null) predicates.Add(predicate);
+                    }
+                    catch { }
+                }
+            }
 
-            MergePriorityProducts(currentBlock, result);
-
-            HandleDiscontinuedProducts(currentBlock, result);
+            var result = _searchService.Search(searchRoot, filterOptions, string.Empty, filters: predicates.Count > 0 ? predicates : null) ?? new ProductSearchResults
+            {
+                ProductViewModels = Enumerable.Empty<ProductTileViewModel>(),
+                FacetGroups = Enumerable.Empty<FacetGroupOption>()
+            };
 
             if (!result.ProductViewModels.Any())
             {
@@ -77,203 +79,6 @@ namespace Foundation.Features.Search.ProductSearchBlock
             };
 
             return await Task.FromResult(View("~/Features/Search/ProductSearchBlock/Index.cshtml", productSearchResult));
-        }
-
-        private void SortProducts(ProductSearchBlock currentContent, ProductSearchResults result)
-        {
-            var newList = new List<ProductTileViewModel>();
-
-            switch (currentContent.SortOrder)
-            {
-                case ProductSearchSortOrder.BestSellerByQuantity:
-                    var byQuantitys = GetBestSellerByQuantity();
-                    newList = result.ProductViewModels.Where(x => !byQuantitys.Any(y => y.Code.Equals(x.Code))).ToList();
-                    newList.InsertRange(0, byQuantitys);
-                    break;
-                case ProductSearchSortOrder.BestSellerByRevenue:
-                    var byRevenues = GetBestSellerByRevenue();
-                    newList = result.ProductViewModels.Where(x => !byRevenues.Any(y => y.Code.Equals(x.Code))).ToList();
-                    newList.InsertRange(0, byRevenues);
-                    break;
-                case ProductSearchSortOrder.NewestProducts:
-                    newList = result.ProductViewModels.OrderByDescending(x => x.Created).ToList();
-                    break;
-                default:
-                    newList = result.ProductViewModels.ToList();
-                    break;
-            }
-
-            result.ProductViewModels = newList;
-        }
-
-        private void MergePriorityProducts(ProductSearchBlock currentContent, ProductSearchResults result)
-        {
-            var products = new List<EntryContentBase>();
-            if (currentContent != null)
-            {
-                products = currentContent.PriorityProducts?.FilteredItems?.Select(x => x.GetContent() as EntryContentBase).ToList() ?? new List<EntryContentBase>();
-            }
-
-            products = products.Where(x => !result.ProductViewModels.Any(y => y.Code.Equals(x.Code)))
-                .Select(x => x)
-                .ToList();
-
-            if (!products.Any())
-            {
-                return;
-            }
-
-            var market = _currentMarket.GetCurrentMarket();
-            var currency = _currencyService.GetCurrentCurrency();
-            //var ratings = _reviewService.GetRatings(products.Select(x => x.Code)) ?? null;
-            var newList = result.ProductViewModels.ToList();
-            newList.InsertRange(0, products.Select(document => document.GetProductTileViewModel(market, currency)));
-            result.ProductViewModels = newList;
-        }
-
-        private void HandleDiscontinuedProducts(ProductSearchBlock currentContent, ProductSearchResults result)
-        {
-            var newList = new List<ProductTileViewModel>();
-            switch (currentContent.DiscontinuedProductsMode)
-            {
-                case DiscontinuedProductMode.Hide:
-                    newList = result.ProductViewModels.Where(x => !x.ProductStatus.Equals("Discontinued")).ToList();
-                    break;
-                case DiscontinuedProductMode.DemoteToBottom:
-                    var discontinueds = result.ProductViewModels.Where(x => x.ProductStatus.Equals("Discontinued")).ToList();
-                    var products = result.ProductViewModels.Where(x => !x.ProductStatus.Equals("Discontinued")).ToList();
-                    discontinueds.InsertRange(0, products);
-                    newList = discontinueds;
-                    break;
-                default:
-                    newList = result.ProductViewModels.ToList();
-                    break;
-            }
-
-            result.ProductViewModels = newList;
-        }
-
-        private IEnumerable<ProductTileViewModel> GetBestSellerByQuantity()
-        {
-            if (!double.TryParse(ConfigurationManager.AppSettings["episerver:commerce.ReportingTimeRanges"], out var days))
-            {
-                days = 365;
-            }
-            var market = _currentMarket.GetCurrentMarket();
-            var currency = _currencyService.GetCurrentCurrency();
-            var lineItems = _reportingDataLoader.GetReportingData(DateTime.Now.AddDays(-days), DateTime.Now);
-            var topSeller = new Dictionary<LineItemReportingModel, decimal>();
-            foreach (var lineItem in lineItems)
-            {
-                if (topSeller.ContainsKey(lineItem))
-                {
-                    topSeller[lineItem] += lineItem.Quantity;
-                }
-                else
-                {
-                    topSeller.Add(lineItem, lineItem.Quantity);
-                }
-            }
-            return topSeller.OrderByDescending(x => x.Value).Select(x => x.Key.GetEntryContentBase().GetProductTileViewModel(market, currency));
-        }
-
-        private IEnumerable<ProductTileViewModel> GetBestSellerByRevenue()
-        {
-            if (!double.TryParse(ConfigurationManager.AppSettings["episerver:commerce.ReportingTimeRanges"], out var days))
-            {
-                days = 365;
-            }
-            var market = _currentMarket.GetCurrentMarket();
-            var currency = _currencyService.GetCurrentCurrency();
-            var lineItems = _reportingDataLoader.GetReportingData(DateTime.Now.AddDays(-days), DateTime.Now);
-            var topSeller = new Dictionary<LineItemReportingModel, decimal>();
-            foreach (var lineItem in lineItems)
-            {
-                if (topSeller.ContainsKey(lineItem))
-                {
-                    topSeller[lineItem] += lineItem.ExtendedPrice * lineItem.Quantity;
-                }
-                else
-                {
-                    topSeller.Add(lineItem, lineItem.ExtendedPrice * lineItem.Quantity);
-                }
-            }
-            return topSeller.OrderByDescending(x => x.Value).Select(x => x.Key.GetEntryContentBase().GetProductTileViewModel(market, currency));
-        }
-
-        private ProductSearchResults GetSearchResults(string language, ProductSearchBlock productSearchBlock)
-        {
-            var filterOptions = new FilterOptionViewModel
-            {
-                Q = productSearchBlock.SearchTerm,
-                PageSize = productSearchBlock.ResultsPerPage,
-                Sort = string.Empty,
-                FacetGroups = new List<FacetGroupOption>(),
-                Page = 1
-            };
-
-            var filters = GetFilters(productSearchBlock);
-            return _searchService.SearchWithFilters(null, filterOptions, filters);
-        }
-
-        private IEnumerable<EPiServer.Find.Api.Querying.Filter> GetFilters(ProductSearchBlock productSearchBlock)
-        {
-            var filters = new List<EPiServer.Find.Api.Querying.Filter>();
-            if (productSearchBlock.Nodes?.FilteredItems != null && productSearchBlock.Nodes.FilteredItems.Any())
-            {
-                var nodes = productSearchBlock.Nodes.FilteredItems.Select(x => x.GetContent()).OfType<NodeContent>().ToList();
-                var outlines = nodes.Select(x => _searchService.GetOutline(x.Code)).ToList();
-                var outlineFilters = outlines.Select(s => new PrefixFilter("Outline$$string.lowercase", s.ToLowerInvariant()))
-                    .ToList();
-
-                if (outlineFilters.Count == 1)
-                {
-                    filters.Add(outlineFilters.First());
-                }
-                else
-                {
-                    filters.Add(new OrFilter(outlineFilters.ToArray()));
-                }
-            }
-
-            if (productSearchBlock.MinPrice > 0 || productSearchBlock.MaxPrice > 0)
-            {
-                var rangeFilter = RangeFilter.Create("DefaultPrice$$number",
-                    productSearchBlock.MinPrice.ToString(),
-                    productSearchBlock.MaxPrice == 0 ? double.MaxValue.ToString() : productSearchBlock.MaxPrice.ToString());
-                rangeFilter.IncludeUpper = true;
-                filters.Add(rangeFilter);
-            }
-
-            if (productSearchBlock.BrandFilter != null)
-            {
-                var brands = productSearchBlock.BrandFilter.Split(',');
-                var brandFilters = brands.Select(s => new PrefixFilter("Brand$$string.lowercase", s.ToLowerInvariant())).ToList();
-                if (brandFilters.Count == 1)
-                {
-                    filters.Add(brandFilters.First());
-                }
-                else
-                {
-                    filters.Add(new OrFilter(brandFilters.ToArray()));
-                }
-            }
-
-            // Add bury filter
-            filters.Add(new PrefixFilter("Bury$$bool", "false"));
-
-            if (productSearchBlock.Filters == null)
-            {
-                return filters;
-            }
-            foreach (var item in productSearchBlock.Filters.FilteredItems)
-            {
-                if (item.GetContent() is FilterBaseBlock filter)
-                {
-                    filters.Add(filter.GetFilter());
-                }
-            }
-            return filters;
         }
     }
 }

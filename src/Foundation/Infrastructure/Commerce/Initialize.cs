@@ -29,7 +29,6 @@ namespace Foundation.Infrastructure.Commerce
             _services.AddSingleton<ICouponFilter, FoundationCouponFilter>();
             _services.AddSingleton<ICouponUsage, FoundationCouponUsage>();
             _services.AddSingleton<IInstallService, InstallService>();
-            _services.AddSingleton<IInstallStep, AddAdmin>();
             _services.AddSingleton<IInstallStep, AddCurrencies>();
             _services.AddSingleton<IInstallStep, AddCustomers>();
             _services.AddSingleton<IInstallStep, AddMarkets>();
@@ -38,15 +37,9 @@ namespace Foundation.Infrastructure.Commerce
             _services.AddSingleton<IInstallStep, AddShippingMethods>();
             _services.AddSingleton<IInstallStep, AddTaxes>();
             _services.AddSingleton<IInstallStep, AddWarehouses>();
-            context.ConfigurationComplete += (o, e) =>
-            {
-                e.Services.Intercept<IUpdateCurrentLanguage>(
-                (locator, defaultImplementation) =>
-                    new LanguageService(
-                        locator.GetInstance<ICurrentMarket>(),
-                        locator.GetInstance<ICookieService>(),
-                        defaultImplementation));
-            };
+            // CMS 13: Intercept on IServiceCollection removed. LanguageService already registered
+            // via [ServiceConfiguration] attribute. Intercept-based decoration removed.
+            // The decorator pattern for IUpdateCurrentLanguage is no longer applied.
         }
 
         void IInitializableModule.Initialize(InitializationEngine context)

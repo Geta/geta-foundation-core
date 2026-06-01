@@ -1,37 +1,19 @@
-﻿using EPiServer.SpecializedProperties;
-using Geta.Optimizely.Categories;
+using EPiServer.Core;
+using EPiServer.DataAnnotations;
 
 namespace Foundation.Features.Category
 {
-    [ContentType(GUID = "A9BBD7FC-27C5-4718-890A-E28ACBE5EE26",
-        DisplayName = "Standard Category",
-        Description = "Used to categorize content")]
-    public class StandardCategory : CategoryData, IFoundationContent
+    /// <summary>
+    /// Stub for Foundation.Features.Category.StandardCategory.
+    /// This type was removed from the Foundation codebase but the database still references it
+    /// (content link 338, child of CategoryRoot 337). This stub allows CMS to instantiate it
+    /// so Graph full sync can traverse the content tree without errors.
+    /// </summary>
+    [ContentType(
+        GUID = "A9BBD7FC-27C5-4718-890A-E28ACBE5EE26",
+        AvailableInEditMode = false,
+        DisplayName = "Standard Category (legacy stub)")]
+    public class StandardCategory : PageData
     {
-        #region Implement IFoundationContent
-
-        [CultureSpecific]
-        [Display(Name = "Hide site header", GroupName = TabNames.Settings, Order = 100)]
-        public virtual bool HideSiteHeader { get; set; }
-
-        [CultureSpecific]
-        [Display(Name = "Hide site footer", GroupName = TabNames.Settings, Order = 200)]
-        public virtual bool HideSiteFooter { get; set; }
-
-        [Display(Name = "CSS files", GroupName = TabNames.Styles, Order = 100)]
-        public virtual LinkItemCollection CssFiles { get; set; }
-
-        [Display(Name = "CSS", GroupName = TabNames.Styles, Order = 200)]
-        [UIHint(UIHint.Textarea)]
-        public virtual string Css { get; set; }
-
-        [Display(Name = "Script files", GroupName = TabNames.Scripts, Order = 100)]
-        public virtual LinkItemCollection ScriptFiles { get; set; }
-
-        [UIHint(UIHint.Textarea)]
-        [Display(GroupName = TabNames.Scripts, Order = 200)]
-        public virtual string Scripts { get; set; }
-
-        #endregion
     }
 }

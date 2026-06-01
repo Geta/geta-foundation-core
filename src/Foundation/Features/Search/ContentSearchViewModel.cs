@@ -1,10 +1,11 @@
-﻿using EPiServer.Find.UnifiedSearch;
+// EPiServer.Find.UnifiedSearch removed: UnifiedSearchResults replaced with IEnumerable<UnifiedSearchHit> stub.
+// Phase 4 will restore full Find/Graph content search.
 
 namespace Foundation.Features.Search
 {
     public class ContentSearchViewModel
     {
-        public UnifiedSearchResults Hits { get; set; }
+        public IEnumerable<UnifiedSearchHit> Hits { get; set; }
         public FilterOptionViewModel FilterOption { get; set; }
 
         public string SectionFilter

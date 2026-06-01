@@ -1,5 +1,5 @@
 ﻿using EPiServer.Commerce.Catalog.Linking;
-using EPiServer.Find.Commerce.Services.Internal;
+// EPiServer.Find.Commerce.Services.Internal removed: no CMS 13 version.
 using Foundation.Infrastructure.Cms;
 using Mediachase.Commerce.InventoryService;
 using Mediachase.Commerce.Markets;
@@ -45,7 +45,8 @@ namespace Foundation.Infrastructure.Commerce.Extensions
                 var variations = ContentLoader.Value
                     .GetItems(productContent.GetVariants(RelationRepository.Value), productContent.Language)
                     .OfType<VariationContent>();
-                return variations.SelectMany(x => x.GetStockPlacement());
+                // Commerce 15 removed: VariationContent.GetStockPlacement() removed. Use ContentLink.GetStockPlacements() instead.
+                return variations.SelectMany(x => x.ContentLink.GetStockPlacements());
             }
 
             if (entryContentBase is PackageContent packageContent)

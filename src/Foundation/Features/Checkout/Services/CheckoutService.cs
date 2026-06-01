@@ -306,7 +306,8 @@ namespace Foundation.Features.Checkout.Services
             //create first order
             orderReference = _orderRepository.SaveAsPurchaseOrder(paymentPlan);
             var purchaseOrder = _orderRepository.Load(orderReference);
-            OrderGroupWorkflowManager.RunWorkflow((OrderGroup)purchaseOrder, OrderGroupWorkflowManager.CartCheckOutWorkflowName);
+            // Commerce 15 removed: OrderGroupWorkflowManager removed. Workflow execution skipped.
+            // OrderGroupWorkflowManager.RunWorkflow((OrderGroup)purchaseOrder, OrderGroupWorkflowManager.CartCheckOutWorkflowName);
             var noteDetailPattern = "New purchase order placed by {0} in {1} from payment plan {2}";
             var noteDetail = string.Format(noteDetailPattern, PrincipalInfo.CurrentPrincipal.Identity.Name, "VNext site", (paymentPlan as PaymentPlan).Id);
             AddNoteToPurchaseOrder(purchaseOrder as IPurchaseOrder, noteDetail, OrderNoteTypes.System, PrincipalInfo.CurrentPrincipal.GetContactId());

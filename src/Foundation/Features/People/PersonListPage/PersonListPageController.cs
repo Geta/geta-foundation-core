@@ -1,45 +1,49 @@
-﻿using EPiServer.Find;
-using EPiServer.Find.Cms;
-using EPiServer.Find.Framework;
 using Foundation.Features.People.PersonItemPage;
 using Foundation.Infrastructure.Cms;
 using Foundation.Infrastructure.Cms.Settings;
-using Foundation.Infrastructure.Find;
 
 namespace Foundation.Features.People.PersonListPage
 {
+    // EPiServer.Find removed: person search replaced with IContentLoader descendant lookup + in-memory filtering.
+    // Wildcard name search is replaced with case-insensitive Contains().
     public class PersonListPageController : PageController<PersonList>
     {
         private readonly ISettingsService _settingsService;
+        private readonly IContentLoader _contentLoader;
 
-        public PersonListPageController(ISettingsService settingsService)
+        public PersonListPageController(ISettingsService settingsService, IContentLoader contentLoader)
         {
             _settingsService = settingsService;
+            _contentLoader = contentLoader;
         }
 
         public ActionResult Index(PersonList currentPage)
         {
             var queryString = Request.Query;
-            var query = SearchClient.Instance.Search<PersonPage>();
 
-            if (!string.IsNullOrWhiteSpace(queryString["name"].ToString()))
-            {
-                query = query.AddWildCardQuery(queryString["name"].ToString(), x => x.Name);
-            }
+            IEnumerable<PersonPage> allPersons = _contentLoader
+                .GetDescendents(currentPage.ContentLink)
+                .Select(r =>
+                {
+                    try { return _contentLoader.Get<IContent>(r) as PersonPage; }
+                    catch { return null; }
+                })
+                .Where(p => p != null);
 
-            if (!string.IsNullOrWhiteSpace(queryString["sector"].ToString()))
-            {
-                query = query.Filter(x => x.Sector.Match(queryString["sector"].ToString()));
-            }
+            var nameFilter = queryString["name"].ToString();
+            var sectorFilter = queryString["sector"].ToString();
+            var locationFilter = queryString["location"].ToString();
 
-            if (!string.IsNullOrWhiteSpace(queryString["location"].ToString()))
-            {
-                query = query.Filter(x => x.Location.Match(queryString["location"].ToString()));
-            }
+            if (!string.IsNullOrWhiteSpace(nameFilter))
+                allPersons = allPersons.Where(p => p.Name.Contains(nameFilter, StringComparison.OrdinalIgnoreCase));
 
-            var persons = query.OrderBy(x => x.PageName)
-                                    .Take(500)
-                                    .GetContentResult();
+            if (!string.IsNullOrWhiteSpace(sectorFilter))
+                allPersons = allPersons.Where(p => string.Equals(p.Sector, sectorFilter, StringComparison.OrdinalIgnoreCase));
+
+            if (!string.IsNullOrWhiteSpace(locationFilter))
+                allPersons = allPersons.Where(p => string.Equals(p.Location, locationFilter, StringComparison.OrdinalIgnoreCase));
+
+            var persons = allPersons.OrderBy(p => p.Name).Take(500).ToList();
 
             var settingPage = _settingsService.GetSiteSettings<CollectionSettings>();
 
@@ -48,20 +52,10 @@ namespace Foundation.Features.People.PersonListPage
                 Persons = persons,
                 Sectors = settingPage?.Sectors?.OrderBy(x => x.Text).ToList() ?? new List<SelectionItem>(),
                 Locations = settingPage?.Locations?.OrderBy(x => x.Text).ToList() ?? new List<SelectionItem>(),
-                Names = GetNames(persons)
+                Names = persons.Select(p => p.Name).Distinct().OrderBy(x => x).ToList()
             };
 
             return View(model);
-        }
-
-        public List<string> GetNames(IContentResult<PersonPage> persons)
-        {
-            var lstNames = new List<string>();
-            foreach (var person in persons)
-            {
-                lstNames.Add(person.Name);
-            }
-            return lstNames.Distinct().OrderBy(x => x).ToList();
         }
     }
 }

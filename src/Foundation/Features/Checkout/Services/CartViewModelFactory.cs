@@ -129,8 +129,7 @@ namespace Foundation.Features.Checkout.Services
                     CheckoutPage = pageSettings?.CheckoutPage,
                     //MultiShipmentPage = checkoutPage.MultiShipmentPage,
                     AppliedCouponCodes = Enumerable.Empty<string>(),
-                    AddressModel = addressModel,
-                    ShowRecommendations = true
+                    AddressModel = addressModel
                 };
             }
 
@@ -151,8 +150,7 @@ namespace Foundation.Features.Checkout.Services
                 CheckoutPage = pageSettings?.CheckoutPage,
                 //MultiShipmentPage = checkoutPage.MultiShipmentPage,
                 AppliedCouponCodes = cart.GetFirstForm().CouponCodes.Distinct(),
-                HasOrganization = contact?.OwnerId != null,
-                ShowRecommendations = cartPage != null ? cartPage.ShowRecommendations : true
+                HasOrganization = contact?.OwnerId != null
             };
 
             var shipment = model.Shipments.FirstOrDefault();

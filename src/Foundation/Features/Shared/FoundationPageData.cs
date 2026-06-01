@@ -1,23 +1,12 @@
-//using EPiServer.Labs.ContentManager.Cards;
-//using EPiServer.Labs.ContentManager.Dashboard;
 using EPiServer.SpecializedProperties;
 using Foundation.Features.Blocks.ButtonBlock;
-using Geta.Optimizely.Categories;
-using Geta.Optimizely.Categories.DataAnnotations;
 
 namespace Foundation.Features.Shared
 {
-    public abstract class FoundationPageData : PageData, ICategorizableContent, IFoundationContent/*, IDashboardItem*/
+    public abstract class FoundationPageData : PageData, IFoundationContent
     {
         #region Page Header
-
-        [Categories]
-        [Display(Name = "Categories",
-            Description = "Categories associated with this content.",
-            GroupName = SystemTabNames.PageHeader,
-            Order = 10)]
-        public virtual IList<ContentReference> Categories { get; set; }
-
+        // Geta.Optimizely.Categories removed (no CMS 13 version) — Categories property removed.
         #endregion
 
         #region Content

@@ -18,9 +18,10 @@ namespace Foundation.Infrastructure
         [RequiredAccess(AccessLevel.Edit)]
         public const string Header = "Header";
 
-        [Display(Order = 55)]
+        // CMS 13: tab name values cannot contain spaces; display name set via Display(Name=).
+        [Display(Name = "Top Banner", Order = 55)]
         [RequiredAccess(AccessLevel.Edit)]
-        public const string TopBanner = "Top Banner";
+        public const string TopBanner = "TopBanner";
 
         [Display(Order = 60)]
         [RequiredAccess(AccessLevel.Edit)]
