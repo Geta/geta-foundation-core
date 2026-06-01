@@ -19,10 +19,7 @@
     <PackageReference Include="EPiServer.CMS.TinyMce" Version="13.1.0" />
     <PackageReference Include="EPiServer.Cms.UI.VisitorGroups" Version="13.1.0" />
     <PackageReference Include="EPiServer.Commerce" Version="15.0.0" />
-    <!-- Commerce.ODP 15.0.0-preview1 does not exist yet; override transitive pin to latest available (14.45.3). NU1605 suppressed. -->
-    <PackageReference Include="EPiServer.Commerce.ODP" Version="15.0.0">
-      <NoWarn>NU1605</NoWarn>
-    </PackageReference>
+    <PackageReference Include="EPiServer.Commerce.ODP" Version="15.0.0" />
     <PackageReference Include="EPiServer.Hosting" Version="13.1.0" />
     <!-- Updated from 1.0.1 to 13.0.0 for CMS 13 compatibility. -->
     <PackageReference Include="EPiServer.ImageLibrary.ImageSharp" Version="13.1.0" />
