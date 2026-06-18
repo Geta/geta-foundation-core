@@ -17,12 +17,7 @@ namespace Foundation.Features.Locations.LocationListPage
         public ActionResult Index(LocationListPage currentPage)
         {
             var locations = _contentLoader
-                .GetDescendents(currentPage.ContentLink)
-                .Select(r =>
-                {
-                    try { return _contentLoader.Get<IContent>(r); }
-                    catch { return null; }
-                })
+                .GetItems(_contentLoader.GetDescendents(currentPage.ContentLink), new LoaderOptions())
                 .OfType<LocationItemPage.LocationItemPage>()
                 .OrderBy(x => x.Name)
                 .Take(500)
