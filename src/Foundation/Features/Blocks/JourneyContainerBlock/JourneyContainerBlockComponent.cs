@@ -41,7 +41,7 @@ namespace Foundation.Features.Blocks.JourneyContainerBlock
             if (content != null)
             {
                 DateTime eventTime = content.JourneyStartTime;
-                IContentRepository contentRepository = ServiceLocator.Current.GetService<IContentRepository>();
+                IContentRepository contentRepository = _locator.GetInstance<IContentRepository>();
                 if (content.MainContentArea != null && content.MainContentArea.Items != null && content.MainContentArea.Items.Any())
                 {
                     foreach (var item in content.MainContentArea.Items)

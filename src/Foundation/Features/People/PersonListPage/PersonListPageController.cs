@@ -22,13 +22,8 @@ namespace Foundation.Features.People.PersonListPage
             var queryString = Request.Query;
 
             IEnumerable<PersonPage> allPersons = _contentLoader
-                .GetDescendents(currentPage.ContentLink)
-                .Select(r =>
-                {
-                    try { return _contentLoader.Get<IContent>(r) as PersonPage; }
-                    catch { return null; }
-                })
-                .Where(p => p != null);
+                .GetItems(_contentLoader.GetDescendents(currentPage.ContentLink), new LoaderOptions())
+                .OfType<PersonPage>();
 
             var nameFilter = queryString["name"].ToString();
             var sectorFilter = queryString["sector"].ToString();

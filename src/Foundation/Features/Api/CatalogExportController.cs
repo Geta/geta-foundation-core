@@ -36,29 +36,24 @@ namespace Foundation.Features.Api
         {
             var catalogs = _contentLoader.GetChildren<EPiServer.Commerce.Catalog.ContentTypes.CatalogContent>(_referenceConverter.GetRootLink());
             var catalog = catalogs.FirstOrDefault(x => x.Name.Equals(catalogName, StringComparison.OrdinalIgnoreCase));
-            if (catalog != null)
+            if (catalog == null)
             {
-                return Ok(GetFile(catalog.Name));
+                return NotFound($"{catalogName} not found");
             }
 
-            return Ok(string.Format("{0} not found", catalogName));
-        }
-
-        private Task GetFile(string catalogName)
-        {
-            // CMS 13: IBlobFactory removed. Export directly to MemoryStream.
+            // CMS 13: IBlobFactory removed. Export directly to a MemoryStream and let
+            // FileStreamResult stream it to the response and dispose it afterwards.
             var memoryStream = new MemoryStream();
             using (var zipArchive = new ZipArchive(memoryStream, ZipArchiveMode.Create, leaveOpen: true))
             {
                 var entry = zipArchive.CreateEntry("catalog.xml");
                 using (var entryStream = entry.Open())
                 {
-                    _importExport.Export(catalogName, entryStream, Path.GetTempPath());
+                    _importExport.Export(catalog.Name, entryStream, Path.GetTempPath());
                 }
             }
             memoryStream.Position = 0;
-            HttpContext.Response.ContentType = "application/zip";
-            return memoryStream.CopyToAsync(HttpContext.Response.Body);
+            return File(memoryStream, "application/zip", $"{catalog.Name}.zip");
         }
 
         //[HttpGet]

@@ -1,4 +1,5 @@
 using EPiServer.Commerce.Catalog.ContentTypes;
+using System.Collections.Concurrent;
 using System.Reflection;
 
 namespace Foundation.Features.Blocks.ProductFilterBlocks
@@ -15,9 +16,14 @@ namespace Foundation.Features.Blocks.ProductFilterBlocks
             if (string.IsNullOrEmpty(FieldName))
                 return null;
 
+            // Cache PropertyInfo per entry type to avoid repeated reflection lookups
+            // when the predicate runs across all catalog entries.
+            var propertyCache = new ConcurrentDictionary<Type, PropertyInfo>();
+
             return entry =>
             {
-                var prop = entry.GetType().GetProperty(FieldName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+                var prop = propertyCache.GetOrAdd(entry.GetType(),
+                    t => t.GetProperty(FieldName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase));
                 var val = prop?.GetValue(entry);
                 return val != null && !string.IsNullOrEmpty(val.ToString());
             };

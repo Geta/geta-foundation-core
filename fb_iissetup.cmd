@@ -1,7 +1,7 @@
 @echo off
 
 set APPCMD=%windir%\system32\inetsrv\appcmd.exe
-set errorMessage = "" 
+set errorMessage=
 
 if "%~1" == "" (
 	set errorMessage=Missing input parameter app name and physical path. Domain is optional.
@@ -18,7 +18,7 @@ goto configureSite
 
 :configureSite
 %APPCMD% add site /name:"%APPNAME%" /physicalPath:"%PHYSICALPATH%" /bindings:http/*:80:"%APPNAME%"
-if %DOMAIN%=="" GOTO configurePool
+if "%DOMAIN%"=="" GOTO configurePool
 %APPCMD% set site "%APPNAME%" /+bindings.[protocol='http',bindingInformation='*:80:%DOMAIN%']
 %APPCMD% set site "%APPNAME%" /+bindings.[protocol='https',bindingInformation='*:443:%DOMAIN%']
 

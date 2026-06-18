@@ -4,7 +4,7 @@
 
 
 
-cd /d F:\sitebuilder-sites\cms13-upgrade\Foundation
+cd /d %~dp0
 
 
 set ROOTPATH=%cd%
