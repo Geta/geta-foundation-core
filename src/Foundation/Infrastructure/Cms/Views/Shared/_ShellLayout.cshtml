@@ -30,9 +30,10 @@
 </head>
 <body class="epi-workspace">
     @Html.AntiForgeryToken()
-    @Html.CreatePlatformNavigationMenu()
+    @* CMS 13 removed: CreatePlatformNavigationMenu and ApplyPlatformNavigation removed from IHtmlHelper in CMS 13 shell layout. *@
+    @* @Html.CreatePlatformNavigationMenu() *@
     <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div @Html.Raw(Html.ApplyPlatformNavigation())>
+    <div>
         <div class="loading-box" style="display: none">
             <div class="loader"></div>
         </div>

@@ -1,6 +1,5 @@
 ﻿using EPiServer.Commerce.Catalog.Linking;
 using EPiServer.Filters;
-using EPiServer.Tracking.Commerce;
 using Foundation.Features.CatalogContent.Bundle;
 using Foundation.Features.CatalogContent.Services;
 using Foundation.Features.Checkout;
@@ -9,7 +8,6 @@ using Foundation.Features.Checkout.ViewModels;
 using Foundation.Infrastructure.Cms.Settings;
 using Foundation.Infrastructure.Commerce;
 using Foundation.Infrastructure.Commerce.Customer.Services;
-using Foundation.Infrastructure.Personalization;
 
 namespace Foundation.Features.NamedCarts.Wishlist
 {
@@ -21,7 +19,6 @@ namespace Foundation.Features.NamedCarts.Wishlist
         private CartWithValidationIssues _wishlist;
         private CartWithValidationIssues _cart;
         private readonly IOrderRepository _orderRepository;
-        private readonly ICommerceTrackingService _trackingService;
         private readonly CartViewModelFactory _cartViewModelFactory;
         private readonly IQuickOrderService _quickOrderService;
         private readonly ReferenceConverter _referenceConverter;
@@ -38,7 +35,6 @@ namespace Foundation.Features.NamedCarts.Wishlist
             IContentLoader contentLoader,
             ICartService cartService,
             IOrderRepository orderRepository,
-            ICommerceTrackingService recommendationService,
             CartViewModelFactory cartViewModelFactory,
             IQuickOrderService quickOrderService,
             ReferenceConverter referenceConverter,
@@ -54,7 +50,6 @@ namespace Foundation.Features.NamedCarts.Wishlist
             _contentLoader = contentLoader;
             _cartService = cartService;
             _orderRepository = orderRepository;
-            _trackingService = recommendationService;
             _cartViewModelFactory = cartViewModelFactory;
             _quickOrderService = quickOrderService;
             _referenceConverter = referenceConverter;
@@ -69,7 +64,6 @@ namespace Foundation.Features.NamedCarts.Wishlist
         }
 
         [HttpGet]
-        [CommerceTracking(TrackingType.Wishlist)]
         public ActionResult Index(WishListPage currentPage)
         {
             var viewModel = _cartViewModelFactory.CreateWishListViewModel(WishList.Cart, currentPage);
@@ -96,7 +90,7 @@ namespace Foundation.Features.NamedCarts.Wishlist
         }
 
         [HttpPost]
-        public async Task<JsonResult> AddToCart([FromBody] RequestParamsToCart param) // only use Code
+        public JsonResult AddToCart([FromBody] RequestParamsToCart param) // only use Code
         {
             if (WishList.Cart == null)
             {
@@ -156,7 +150,6 @@ namespace Foundation.Features.NamedCarts.Wishlist
             if (result.EntriesAddedToCart)
             {
                 _orderRepository.Save(WishList.Cart);
-                await _trackingService.TrackWishlist(HttpContext);
                 return Json(new ChangeCartJsonResult
                 {
                     StatusCode = 1,
@@ -182,7 +175,6 @@ namespace Foundation.Features.NamedCarts.Wishlist
 
             _cartService.ChangeCartItem(WishList.Cart, 0, param.Code, param.Quantity, param.Size, param.NewSize);
             _orderRepository.Save(WishList.Cart);
-            _trackingService.TrackWishlist(HttpContext);
             var referencePages = _settingsService.GetSiteSettings<ReferencePageSettings>();
             WishListPage wishlistPage = null;
             if (!referencePages?.WishlistPage.IsNullOrEmpty() ?? false)
@@ -200,7 +192,7 @@ namespace Foundation.Features.NamedCarts.Wishlist
         }
 
         [HttpPost]
-        public async Task<JsonResult> RemoveWishlistItem([FromBody] RequestParamsToCart param) // only use Code
+        public JsonResult RemoveWishlistItem([FromBody] RequestParamsToCart param) // only use Code
         {
             var productName = "";
             var entryLink = _referenceConverter.GetContentLink(param.Code);
@@ -213,7 +205,6 @@ namespace Foundation.Features.NamedCarts.Wishlist
 
             var result = _cartService.ChangeCartItem(WishList.Cart, 0, param.Code, 0, null, null);
             _orderRepository.Save(WishList.Cart);
-            await _trackingService.TrackWishlist(HttpContext);
             if (result.Count > 0)
             {
                 return Json(new ChangeCartJsonResult { StatusCode = 0, Message = "Remove " + productName + " error.", CountItems = (int)WishList.Cart.GetAllLineItems().Sum(x => x.Quantity) });
@@ -323,7 +314,7 @@ namespace Foundation.Features.NamedCarts.Wishlist
         }
 
         [HttpPost]
-        public async Task<ActionResult> AddAllToCart()
+        public ActionResult AddAllToCart()
         {
             var allLineItem = WishList.Cart.GetAllLineItems();
             var entriesAddedToCart = true;
@@ -349,7 +340,6 @@ namespace Foundation.Features.NamedCarts.Wishlist
             if (entriesAddedToCart)
             {
                 _orderRepository.Save(Cart.Cart);
-                await _trackingService.TrackCart(HttpContext, Cart.Cart);
                 return Json(new ChangeCartJsonResult
                 {
                     StatusCode = 1,

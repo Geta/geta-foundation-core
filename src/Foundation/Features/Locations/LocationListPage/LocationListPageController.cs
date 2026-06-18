@@ -1,11 +1,10 @@
-﻿using EPiServer.Find;
-using EPiServer.Find.Cms;
-using EPiServer.Find.Framework;
-using EPiServer.Personalization;
-using Foundation.Infrastructure.Find;
+using System.Globalization;
 
 namespace Foundation.Features.Locations.LocationListPage
 {
+    // EPiServer.Find removed: location browsing uses IContentLoader with in-memory filtering.
+    // Supported filters: continent (checkbox, ?continent=Europe,Asia) and temperature (?t=min,max).
+    // Geo-distance filtering is not available without Find.
     public class LocationListPageController : PageController<LocationListPage>
     {
         private readonly IContentLoader _contentLoader;
@@ -17,55 +16,48 @@ namespace Foundation.Features.Locations.LocationListPage
 
         public ActionResult Index(LocationListPage currentPage)
         {
-            var query = SearchClient.Instance.Search<LocationItemPage.LocationItemPage>()
-                .PublishedInCurrentLanguage()
-                .FilterOnReadAccess()
-                .ExcludeDeleted();
+            var locations = _contentLoader
+                .GetItems(_contentLoader.GetDescendents(currentPage.ContentLink), new LoaderOptions())
+                .OfType<LocationItemPage.LocationItemPage>()
+                .OrderBy(x => x.Name)
+                .Take(500)
+                .ToList();
 
-            if (currentPage.FilterArea != null)
+            // Continent filter: ?continent=Europe,Asia (comma-separated)
+            var continentParam = Request.Query["continent"].ToString();
+            if (!string.IsNullOrWhiteSpace(continentParam))
             {
-                foreach (var filterBlock in currentPage.FilterArea.FilteredItems)
-                {
-                    var b = _contentLoader.Get<BlockData>(filterBlock.ContentLink) as IFilterBlock;
-                    if (b != null)
-                    {
-                        query = b.AddFilter(query);
-                    }
-                }
-
-                foreach (var filterBlock in currentPage.FilterArea.FilteredItems)
-                {
-                    var b = _contentLoader.Get<BlockData>(filterBlock.ContentLink) as IFilterBlock;
-                    if (b != null)
-                    {
-                        query = b.ApplyFilter(query, Request.Query);
-                    }
-                }
+                var selected = continentParam
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(c => c.Trim())
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                locations = locations
+                    .Where(l => selected.Contains(l.Continent ?? ""))
+                    .ToList();
             }
 
-            var locations = query.OrderBy(x => x.PageName)
-                                    .Take(500)
-                                    .StaticallyCacheFor(new System.TimeSpan(0, 1, 0)).GetContentResult();
+            // Temperature filter: ?t=min,max  (e.g. ?t=-10,30) — set by the JS slider
+            var tempParam = Request.Query["t"].ToString();
+            if (!string.IsNullOrWhiteSpace(tempParam))
+            {
+                var parts = tempParam.Split(',');
+                if (parts.Length == 2 &&
+                    double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out double tempMin) &&
+                    double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out double tempMax))
+                {
+                    locations = locations
+                        .Where(l => l.AvgTemp.HasValue && l.AvgTemp.Value >= tempMin && l.AvgTemp.Value <= tempMax)
+                        .ToList();
+                }
+            }
 
             var model = new LocationListViewModel(currentPage)
             {
                 Locations = locations,
-                MapCenter = GetMapCenter(),
-                UserLocation = GeoPosition.GetUsersLocation(),
                 QueryString = Request.Query
             };
 
             return View(model);
-        }
-
-        private static GeoCoordinate GetMapCenter()
-        {
-            var userLocation = GeoPosition.GetUsersPosition();
-            if (userLocation != null)
-            {
-                return new GeoCoordinate(30, userLocation.Longitude);
-            }
-            return new GeoCoordinate(30, 0);
         }
     }
 }

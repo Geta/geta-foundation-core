@@ -20,7 +20,7 @@
             Name = "Direct Line Token",
             Description = "The token that is used to connect to the bot framework. Get this from > Health Bot Service > Integration > Channels > DirectLine",
             Order = 10,
-            GroupName = "Bot Configuration")]
+            GroupName = "BotConfiguration")] // CMS 13: spaces not allowed in GroupName values
         [Required]
         public virtual string DirectLineToken { get; set; }
 

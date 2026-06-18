@@ -1,7 +1,6 @@
-﻿using Foundation.Features.CatalogContent.Variation;
+using Foundation.Features.CatalogContent.Variation;
 using Foundation.Infrastructure.Cms;
 using Foundation.Infrastructure.Commerce.Customer.Services;
-using Foundation.Infrastructure.Personalization;
 
 namespace Foundation.Features.CatalogContent.Product
 {
@@ -14,18 +13,17 @@ namespace Foundation.Features.CatalogContent.Product
             CatalogEntryViewModelFactory viewModelFactory,
             //IReviewService reviewService,
             //IReviewActivityService reviewActivityService,
-            ICommerceTrackingService recommendationService,
             ReferenceConverter referenceConverter,
             IContentLoader contentLoader,
             UrlResolver urlResolver,
-            ILoyaltyService loyaltyService) : base(referenceConverter, contentLoader, urlResolver, /*reviewService, reviewActivityService,*/ recommendationService, loyaltyService)
+            ILoyaltyService loyaltyService) : base(referenceConverter, contentLoader, urlResolver, /*reviewService, reviewActivityService,*/ loyaltyService)
         {
             _isInEditMode = isInEditModeAccessor();
             _viewModelFactory = viewModelFactory;
         }
 
         [HttpGet]
-        public async Task<ActionResult> Index(GenericProduct currentContent, string variationCode = "", bool skipTracking = false)
+        public ActionResult Index(GenericProduct currentContent, string variationCode = "", bool skipTracking = false)
         {
             var viewModel = _viewModelFactory.Create<GenericProduct, GenericVariant, GenericProductViewModel>(currentContent, variationCode);
 
@@ -39,7 +37,6 @@ namespace Foundation.Features.CatalogContent.Product
                 return NotFound();
             }
 
-            await AddInfomationViewModel(viewModel, currentContent.Code, skipTracking);
             currentContent.AddBrowseHistory();
             viewModel.BreadCrumb = GetBreadCrumb(currentContent.Code);
             return View(viewModel);

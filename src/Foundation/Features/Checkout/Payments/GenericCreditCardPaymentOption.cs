@@ -87,27 +87,13 @@ namespace Foundation.Features.Checkout.Payments
 
         public override IPayment CreatePayment(decimal amount, IOrderGroup orderGroup)
         {
-            var payment = orderGroup.CreateCardPayment(OrderGroupFactory);
-            payment.CardType = "Credit card";
+            // Commerce 15 removed: IOrderGroup.CreateCardPayment() removed. Use OrderGroupFactory instead.
+            var payment = OrderGroupFactory.CreatePayment(orderGroup);
+            // Commerce 15 removed: IPayment.CardType, CreditCardNumber, CreditCardSecurityCode, ExpirationMonth, ExpirationYear removed.
+            // These properties were on ICreditCardPayment which no longer exists in Commerce 15.
             payment.PaymentMethodId = PaymentMethodId;
             payment.PaymentMethodName = SystemKeyword;
             payment.Amount = amount;
-            if (UseSelectedCreditCard && !string.IsNullOrEmpty(SelectedCreditCardId))
-            {
-                var creditCard = _creditCardService.GetCreditCard(SelectedCreditCardId);
-                payment.CreditCardNumber = creditCard.CreditCardNumber;
-                payment.CreditCardSecurityCode = creditCard.SecurityCode;
-                payment.ExpirationMonth = creditCard.ExpirationMonth ?? 1;
-                payment.ExpirationYear = creditCard.ExpirationYear ?? DateTime.Now.Year;
-            }
-            else
-            {
-                payment.CreditCardNumber = CreditCardNumber;
-                payment.CreditCardSecurityCode = CreditCardSecurityCode;
-                payment.ExpirationMonth = ExpirationMonth;
-                payment.ExpirationYear = ExpirationYear;
-            }
-
             payment.Status = PaymentStatus.Pending.ToString();
             payment.CustomerName = CreditCardName;
             payment.TransactionType = TransactionType.Authorization.ToString();

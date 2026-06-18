@@ -1,11 +1,9 @@
-﻿using EPiServer.Cms.Shell;
-using EPiServer.Core.Html;
+using EPiServer.Cms.Shell;
+// CMS 13 removed: EPiServer.Core.Html.TextIndexer removed.
+// using EPiServer.Core.Html;
 using EPiServer.Filters;
 using Foundation.Features.Blog.BlogItemPage;
-using Foundation.Features.Category;
 using Foundation.Infrastructure.Cms;
-using Geta.Optimizely.Categories;
-using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -89,23 +87,10 @@ namespace Foundation.Features.Blog.BlogListPage
 
         public BlogListPageViewModel GetViewModel(BlogListPage currentPage, PagingInfo pagingInfo)
         {
-            var categoryQuery = Request.Query["category"].Count > 0 ? Request.Query["category"].ToString() : string.Empty;
-            IContent category = null;
-            if (categoryQuery != string.Empty)
-            {
-                if (int.TryParse(categoryQuery, out var categoryContentId))
-                {
-                    var content = _contentLoader.Get<StandardCategory>(new ContentReference(categoryContentId));
-                    if (content != null)
-                    {
-                        category = content;
-                    }
-                }
-            }
             var pageSize = pagingInfo.PageSize;
 
             // TODO: Need a better solution to get data by page
-            var blogs = FindPages(currentPage, category).ToList();
+            var blogs = FindPages(currentPage).ToList();
 
             blogs = Sort(blogs, currentPage.SortOrder).ToList();
             pagingInfo.TotalRecord = blogs.Count;
@@ -122,7 +107,7 @@ namespace Foundation.Features.Blog.BlogListPage
 
             var model = new BlogListPageViewModel(currentPage)
             {
-                Heading = category != null ? "Blog tags for post: " + category.Name : string.Empty,
+                Heading = string.Empty,
                 PagingInfo = pagingInfo
             };
             model.Blogs = blogs.Select(x => GetBlogItemPageViewModel(x, model));
@@ -150,17 +135,7 @@ namespace Foundation.Features.Blog.BlogListPage
 
         private IEnumerable<BlogItemPageViewModel.TagItem> GetTags(BlogItemPage.BlogItemPage currentPage)
         {
-            if (currentPage.Categories != null)
-            {
-                var allCategories = _contentLoader.GetItems(currentPage.Categories, CultureInfo.CurrentUICulture);
-                return allCategories.
-                    Select(cat => new BlogItemPageViewModel.TagItem()
-                    {
-                        Title = cat.Name,
-                        Url = _blogTagFactory.GetTagUrl(currentPage, cat.ContentLink),
-                        DisplayName = (cat as StandardCategory)?.Description,
-                    }).ToList();
-            }
+            // Category-based tags removed: Geta.Optimizely.Categories has no CMS 13 version.
             return new List<BlogItemPageViewModel.TagItem>();
         }
 
@@ -188,10 +163,11 @@ namespace Foundation.Features.Blog.BlogListPage
             regexPattern.Append(@"""[\s\W\w]*?</span>");
             previewText = Regex.Replace(previewText, regexPattern.ToString(), string.Empty, RegexOptions.IgnoreCase | RegexOptions.Multiline);
 
-            return TextIndexer.StripHtml(previewText, PreviewTextLength);
+            // CMS 13 removed: EPiServer.Core.Html.TextIndexer removed. Strip HTML manually.
+            return StripHtml(previewText, PreviewTextLength);
         }
 
-        private IEnumerable<PageData> FindPages(BlogListPage currentPage, IContent category)
+        private IEnumerable<PageData> FindPages(BlogListPage currentPage)
         {
             var listRoot = currentPage.Root ?? currentPage.ContentLink;
             var blogListItemPageType = typeof(BlogItemPage.BlogItemPage).GetPageType();
@@ -199,24 +175,8 @@ namespace Foundation.Features.Blog.BlogListPage
 
             pages = currentPage.IncludeAllLevels ? listRoot.FindPagesByPageType(true, blogListItemPageType.ID) : _contentLoader.GetChildren<BlogItemPage.BlogItemPage>(listRoot);
 
-            if (category != null)
-            {
-                pages = pages.Where(x =>
-                {
-                    var contentReferences = ((ICategorizableContent)x).Categories;
-                    return contentReferences != null && contentReferences
-                               .Intersect(new List<ContentReference>() { category.ContentLink }).Any();
-                });
-            }
-            else if (currentPage.CategoryListFilter != null && currentPage.CategoryListFilter.Any())
-            {
-                pages = pages.Where(x =>
-                {
-                    var contentReferences = ((ICategorizableContent)x).Categories;
-                    return contentReferences != null &&
-                           contentReferences.Intersect(currentPage.CategoryListFilter).Any();
-                });
-            }
+            // Category filtering removed: Geta.Optimizely.Categories has no CMS 13 version.
+            // CategoryListFilter property is preserved on BlogListPage for future re-implementation.
 
             return pages;
         }
@@ -228,6 +188,15 @@ namespace Foundation.Features.Blog.BlogListPage
             sortFilter.Sort(asCollection);
             return asCollection.ToList();
         }
+        // CMS 13 removed: TextIndexer.StripHtml removed. Replacement using Regex.
+        private static string StripHtml(string html, int maxLength)
+        {
+            if (string.IsNullOrEmpty(html)) return string.Empty;
+            var stripped = System.Text.RegularExpressions.Regex.Replace(html, "<[^>]+>", string.Empty);
+            stripped = System.Net.WebUtility.HtmlDecode(stripped);
+            return maxLength > 0 && stripped.Length > maxLength ? stripped.Substring(0, maxLength) : stripped;
+        }
+
         #endregion
     }
 }

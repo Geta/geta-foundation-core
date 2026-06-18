@@ -9,8 +9,8 @@
 
         public override string FormatErrorMessage(string name)
         {
-            ErrorMessage = LocalizationService.Current.GetString(_translationPath);
-            return base.FormatErrorMessage(name);
+            // .NET 10: setting ErrorMessage then calling base throws conflict; return directly.
+            return LocalizationService.Current.GetString(_translationPath) ?? name + " does not match.";
         }
     }
 }

@@ -1,12 +1,12 @@
 @echo off
-cd /d %~dp0
-openfiles > NUL 2>&1
-if %ERRORLEVEL% NEQ 0 (
-	set "errorMessage=Build.cmd script must be run in an elevated (admin) command prompt"
-	goto error
-)
 
-mode con:cols=120 lines=5000
+
+
+
+
+cd /d %~dp0
+
+
 set ROOTPATH=%cd%
 set ROOTDIR=%cd%
 set SOURCEPATH=%ROOTPATH%\src
@@ -42,7 +42,7 @@ cls
 echo Your application name is: %APPNAME%
 echo Your SQL server name is: %SQLSERVER%
 echo Your SQLCMD command is: sqlcmd -S %SQLSERVER% %ADDITIONAL_SQLCMD%
-timeout 15
+
 
 set cms_db=%APPNAME%.Cms
 set commerce_db=%APPNAME%.Commerce
@@ -149,4 +149,4 @@ echo echo ######################################################################
 echo pause >> resetup.cmd
 echo setup %APPNAME% %SQLSERVER% "%ADDITIONAL_SQLCMD%" >> resetup.cmd
 
-pause
+

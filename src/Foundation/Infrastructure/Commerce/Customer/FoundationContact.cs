@@ -24,10 +24,9 @@ namespace Foundation.Infrastructure.Commerce.Customer
             set => Contact.FirstName = value;
         }
 
-        public IEnumerable<CreditCard> CreditCards
-        {
-            get => Contact.ContactCreditCards;
-        }
+        // Commerce 15: CreditCard and ContactCreditCards removed. Stub CreditCard in CommerceTypeStubs.cs.
+        // ContactCreditCards property removed from CustomerContact in Commerce 15 — return empty list.
+        public IEnumerable<CreditCard> CreditCards => Enumerable.Empty<CreditCard>();
         public string LastName
         {
             get => Contact.LastName;

@@ -3,7 +3,6 @@ using Foundation.Features.CatalogContent;
 using Foundation.Features.Home;
 using Foundation.Features.Search.Search;
 using Foundation.Infrastructure.Cms.Settings;
-using Foundation.Infrastructure.Personalization;
 
 namespace Foundation.Features.Search
 {
@@ -11,9 +10,6 @@ namespace Foundation.Features.Search
     {
         private readonly ISearchViewModelFactory _viewModelFactory;
         private readonly ISearchService _searchService;
-        private readonly ICommerceTrackingService _recommendationService;
-        private readonly ReferenceConverter _referenceConverter;
-        private readonly ICmsTrackingService _cmsTrackingService;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IContentLoader _contentLoader;
         private readonly ISettingsService _settingsService;
@@ -26,18 +22,12 @@ namespace Foundation.Features.Search
         public SearchController(
             ISearchViewModelFactory viewModelFactory,
             ISearchService searchService,
-            ICommerceTrackingService recommendationService,
-            ReferenceConverter referenceConverter,
             IHttpContextAccessor httpContextAccessor,
             IContentLoader contentLoader,
-            ICmsTrackingService cmsTrackingService,
             ISettingsService settingsService)
         {
             _viewModelFactory = viewModelFactory;
             _searchService = searchService;
-            _recommendationService = recommendationService;
-            _referenceConverter = referenceConverter;
-            _cmsTrackingService = cmsTrackingService;
             _httpContextAccessor = httpContextAccessor;
             _contentLoader = contentLoader;
             _settingsService = settingsService;
@@ -45,7 +35,7 @@ namespace Foundation.Features.Search
 
         [AcceptVerbs(new string[] { "GET", "POST" })]
         //[PageViewTracking]
-        public async Task<ActionResult> Index(SearchResultPage currentPage, FilterOptionViewModel filterOptions)
+        public ActionResult Index(SearchResultPage currentPage, FilterOptionViewModel filterOptions)
         {
             if (filterOptions == null)
             {
@@ -79,16 +69,8 @@ namespace Foundation.Features.Search
                 var notBestBestList = viewModel.ProductViewModels.Where(x => !x.IsBestBetProduct);
                 viewModel.ProductViewModels = bestBestList.Union(notBestBestList);
 
-                if (filterOptions.Page <= 1 && _httpContextAccessor.HttpContext.Request.Method == "GET")
-                {
-                    var trackingResult =
-                        await _recommendationService.TrackSearch(HttpContext, filterOptions.Q, filterOptions.PageSize,
-                            viewModel.ProductViewModels.Select(x => x.Code));
-                    viewModel.Recommendations = trackingResult.GetSearchResultRecommendations(_referenceConverter);
-                }
             }
 
-            await _cmsTrackingService.SearchedKeyword(_httpContextAccessor.HttpContext, filterOptions.Q);
             if (searchSettings?.ShowContentSearchResults ?? true)
             {
                 viewModel.ContentSearchResult = _searchService.SearchContent(new FilterOptionViewModel()

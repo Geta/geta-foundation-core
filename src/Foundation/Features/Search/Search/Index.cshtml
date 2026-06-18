@@ -204,16 +204,5 @@
             </div>
         </div>
     }
-    <hr />
-    <div class="row">
-        @if (Model.ShowRecommendations && !Model.IsMobile)
-        {
-            <div class="col-12 slider-items-products">
-                <div class="new_title center">
-                    <h2>@Html.TranslateFallback("/Shared/RecommendationsForYou", "Recommendations for you")</h2>
-                </div>
-                @(await Component.InvokeAsync("Recommendations", new { recommendations = Model.Recommendations }))
-            </div>
-        }
-    </div>
+    @* Recommendations removed: EPiServer.Personalization.Commerce has no CMS 13 version. *@
 </div>

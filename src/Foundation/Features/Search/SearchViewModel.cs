@@ -1,6 +1,6 @@
-﻿using EPiServer.Find.Statistics.Api;
-using EPiServer.Personalization.Commerce.Tracking;
+﻿// EPiServer.Find.Statistics.Api removed: DidYouMeanResult provided by FindTypeStubs.cs.
 using Foundation.Features.CatalogContent;
+using Foundation.Infrastructure.Find.Facets;
 
 namespace Foundation.Features.Search
 {
@@ -29,7 +29,5 @@ namespace Foundation.Features.Search
         public bool ShowProductSearchResults { get; set; }
         public bool ShowContentSearchResults { get; set; }
         public bool ShowPdfSearchResults { get; set; }
-        public bool ShowRecommendations { get; set; }
-        public IEnumerable<Recommendation> Recommendations { get; set; }
     }
 }

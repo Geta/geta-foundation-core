@@ -1,6 +1,4 @@
-﻿using EPiServer.Personalization.Commerce.Tracking;
-
-namespace Foundation.Features.CatalogContent.Package
+﻿namespace Foundation.Features.CatalogContent.Package
 {
     public class GenericPackageViewModel : PackageViewModelBase<GenericPackage>, IEntryViewModelBase
     {
@@ -12,8 +10,6 @@ namespace Foundation.Features.CatalogContent.Package
         {
         }
 
-        //public ReviewsViewModel Reviews { get; set; }
-        public IEnumerable<Recommendation> AlternativeProducts { get; set; }
-        public IEnumerable<Recommendation> CrossSellProducts { get; set; }
+        // AlternativeProducts and CrossSellProducts removed: EPiServer.Personalization.Commerce has no CMS 13 version.
     }
 }

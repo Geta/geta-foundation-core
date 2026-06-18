@@ -409,32 +409,32 @@ namespace Foundation.Infrastructure.Commerce.Install.Steps
 
         private static void MapCreditCardsFromCustomerToContact(List<CreditCardPoco> cards, CustomerContact contact)
         {
+            // Commerce 15 removed: CreditCard.CreateInstance() and CustomerContact.AddCreditCard() removed. No-op stub.
             foreach (var cc in cards)
             {
                 var creditCard = CreditCard.CreateInstance();
-
                 creditCard.CreditCardNumber = cc.Number;
                 creditCard.CardType = 1;
                 creditCard.LastFourDigits = cc.LastFour;
                 creditCard.ExpirationMonth = cc.ExpirationMonth;
                 creditCard.ExpirationYear = cc.ExpirationYear;
-                contact.AddCreditCard(creditCard);
+                contact.AddCreditCard(creditCard); // Commerce 15 removed: no-op stub
             }
         }
 
         private static void MapCreditCardsFromOrgToOrganization(List<CreditCardPoco> cards, Organization org)
         {
+            // Commerce 15 removed: CreditCard.CreateInstance() and BusinessManager.Create(CreditCard) removed. No-op stub.
             foreach (var cc in cards)
             {
                 var creditCard = CreditCard.CreateInstance();
-
                 creditCard.CreditCardNumber = cc.Number;
                 creditCard.CardType = 1;
                 creditCard.LastFourDigits = cc.LastFour;
                 creditCard.ExpirationMonth = cc.ExpirationMonth;
                 creditCard.ExpirationYear = cc.ExpirationYear;
                 creditCard.OrganizationId = org.PrimaryKeyId;
-                BusinessManager.Create(creditCard);
+                // Commerce 15 removed: BusinessManager.Create(creditCard) removed. No-op.
             }
         }
 

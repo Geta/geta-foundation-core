@@ -21,14 +21,16 @@
         [Display(Order = 570)]
         public const string Forms = "Forms";
 
-        [Display(Order = 575)]
-        public const string LocationBlocks = "Location Blocks";
+        // CMS 13: tab name values cannot contain spaces; display name set via Display(Name=).
+        [Display(Name = "Location Blocks", Order = 575)]
+        public const string LocationBlocks = "LocationBlocks";
 
         [Display(Order = 580)]
         public const string Multimedia = "Multimedia";
 
-        [Display(Order = 600)]
-        public const string SocialMedia = "Social media";
+        // CMS 13: tab name values cannot contain spaces; display name set via Display(Name=).
+        [Display(Name = "Social media", Order = 600)]
+        public const string SocialMedia = "SocialMedia";
 
         [Display(Order = 610)]
         public const string Social = "Social";

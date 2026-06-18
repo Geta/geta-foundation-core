@@ -15,19 +15,4 @@
     </div>
 }
 
-@if (Model.ShowRecommendations)
-{
-    <br />
-    <section class="related-products">
-        <h2>@Html.TranslateFallback("/Shared/RelatedProducts", "Related Products")</h2>
-        @(await Component.InvokeAsync("Recommendations", new { recommendations = Model.AlternativeProducts }))
-        @*@{ Html.RenderAction("Index", "Recommendations", new { recommendations = Model.AlternativeProducts });}*@
-    </section>
-
-    <br />
-    <section class="upsell-pro">
-        <h2>@Html.TranslateFallback("/Shared/RecommendationsForYou", "Recommendations for you")</h2>
-        @(await Component.InvokeAsync("Recommendations", new { recommendations = Model.CrossSellProducts }))
-        @*@{ Html.RenderAction("Index", "Recommendations", new { recommendations = Model.CrossSellProducts });}*@
-    </section>
-}
+@* Recommendations removed: EPiServer.Personalization.Commerce has no CMS 13 version. *@

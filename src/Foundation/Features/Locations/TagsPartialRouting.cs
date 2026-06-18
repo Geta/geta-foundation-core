@@ -1,11 +1,11 @@
-﻿using EPiServer.Core.Routing;
+using EPiServer.Core.Routing;
 using EPiServer.Core.Routing.Pipeline;
-using EPiServer.Find;
-using EPiServer.Find.Cms;
-using EPiServer.Find.Framework;
 
 namespace Foundation.Features.Locations
 {
+    // EPiServer.Find removed: partial routing disabled.
+    // UrlResolverContext.RemainingPath and GetNextRemainingSegment APIs were also removed in CMS 13.
+    // This class compiles but is not registered, so it has no runtime effect.
     public class TagsPartialRouting : IPartialRouter<TagPage.TagPage, TagPage.TagPage>
     {
         public PartialRouteData GetPartialVirtualPath(TagPage.TagPage content, UrlGeneratorContext requestContext)
@@ -19,25 +19,6 @@ namespace Foundation.Features.Locations
 
         public object RoutePartial(TagPage.TagPage content, UrlResolverContext urlResolverContext)
         {
-            var continentPart = urlResolverContext.GetNextRemainingSegment(urlResolverContext.RemainingPath);
-            if (!string.IsNullOrEmpty(continentPart.Next))
-            {
-                var continent = continentPart.Next;
-                //Check continent exists for this category
-                var mcount = SearchClient.Instance.Search<LocationItemPage.LocationItemPage>()
-                    .Filter(dp => dp.TagString().Match(content.Name)).Filter(dp => dp.Continent.MatchCaseInsensitive(continent))
-                    .Take(0).GetContentResult().TotalMatching;
-
-                if (mcount == 0)
-                {
-                    return null;
-                }
-
-                urlResolverContext.RouteValues.Add("Continent", continent);
-                urlResolverContext.RemainingPath = continentPart.Remaining;
-                return content;
-            }
-
             return null;
         }
     }

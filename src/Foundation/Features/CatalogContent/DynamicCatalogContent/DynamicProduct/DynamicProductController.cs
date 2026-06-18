@@ -1,7 +1,6 @@
-﻿using Foundation.Features.CatalogContent.DynamicCatalogContent.DynamicVariation;
+using Foundation.Features.CatalogContent.DynamicCatalogContent.DynamicVariation;
 using Foundation.Infrastructure.Cms;
 using Foundation.Infrastructure.Commerce.Customer.Services;
-using Foundation.Infrastructure.Personalization;
 
 namespace Foundation.Features.CatalogContent.DynamicCatalogContent.DynamicProduct
 {
@@ -14,18 +13,17 @@ namespace Foundation.Features.CatalogContent.DynamicCatalogContent.DynamicProduc
             CatalogEntryViewModelFactory viewModelFactory,
             //IReviewService reviewService,
             //IReviewActivityService reviewActivityService,
-            ICommerceTrackingService recommendationService,
             ReferenceConverter referenceConverter,
             IContentLoader contentLoader,
             UrlResolver urlResolver,
-            ILoyaltyService loyaltyService) : base(referenceConverter, contentLoader, urlResolver, /*reviewService, reviewActivityService,*/ recommendationService, loyaltyService)
+            ILoyaltyService loyaltyService) : base(referenceConverter, contentLoader, urlResolver, /*reviewService, reviewActivityService,*/ loyaltyService)
         {
             _isInEditMode = isInEditModeAccessor();
             _viewModelFactory = viewModelFactory;
         }
 
         [HttpGet]
-        public async Task<ActionResult> Index(DynamicProduct currentContent, string variationCode = "", bool skipTracking = false)
+        public ActionResult Index(DynamicProduct currentContent, string variationCode = "", bool skipTracking = false)
         {
             var viewModel = _viewModelFactory.Create<DynamicProduct, DynamicVariant, DynamicProductViewModel>(currentContent, variationCode);
 
@@ -40,7 +38,6 @@ namespace Foundation.Features.CatalogContent.DynamicCatalogContent.DynamicProduc
             }
 
             viewModel.GenerateVariantGroup();
-            await AddInfomationViewModel(viewModel, currentContent.Code, skipTracking);
             currentContent.AddBrowseHistory();
             viewModel.BreadCrumb = GetBreadCrumb(currentContent.Code);
             return View("", viewModel);

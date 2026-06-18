@@ -1,3 +1,4 @@
+// EPiServer.Find removed: GeoLocation and [Ignore] stubs are in Features/Search/FindTypeStubs.cs.
 using EPiServer.Find;
 
 namespace Foundation.Features.Locations.LocationItemPage

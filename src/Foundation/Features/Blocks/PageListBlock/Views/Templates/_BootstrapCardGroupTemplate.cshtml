@@ -1,10 +1,20 @@
-﻿@model PageListBlockViewModel
-@using EPiServer.Core.Html
+@model PageListBlockViewModel
+@* CMS 13 removed: EPiServer.Core.Html.TextIndexer removed. *@
+@* @using EPiServer.Core.Html *@
 @using Foundation.Features.Blocks.PageListBlock
 @using Foundation.Features.Shared.SelectionFactories
+@using System.Text.RegularExpressions
+@using System.Net
 
 @{
     int col = 12/Model.PreviewOption;
+    // CMS 13 removed: TextIndexer.StripHtml replaced with local function.
+    Func<string, int, string> StripHtml = (html, max) => {
+        if (string.IsNullOrEmpty(html)) return string.Empty;
+        var s = Regex.Replace(html, "<[^>]+>", string.Empty);
+        s = WebUtility.HtmlDecode(s);
+        return max > 0 && s.Length > max ? s.Substring(0, max) : s;
+    };
 }
 
 @if (Model.Pages != null && Model.Pages.Any())
@@ -17,13 +27,13 @@
             <div class="col">
 	                <div class="card h-100">
                         <div class="ratio @(Model.BootstrapCardRatio != null ? @Model.BootstrapCardRatio : "ratio-4x3")">
-			                <img class="card-img-top" src="@Url.ContentUrl(foundationPage.PageImage)" alt="@foundationPage.MetaTitle" />
+		                <img class="card-img-top" src="@Url.ContentUrl(foundationPage.PageImage)" alt="@foundationPage.MetaTitle" />
                         </div>
-	                    <div class="card-body">		
-					        <h5 class="card-title">@(@Html.Raw(TextIndexer.StripHtml(pageModel != null ? foundationPage.MetaTitle : pageModel.Page.Name, 40)) + "...")</h5>
+	                    <div class="card-body">
+				        <h5 class="card-title">@(@Html.Raw(StripHtml(pageModel != null ? foundationPage.MetaTitle : pageModel.Page.Name, 40)) + "...")</h5>
                             @if(Model.ShowIntroduction) {
                                     <div class="card-text">
-                                        <p>@Html.Raw(TextIndexer.StripHtml(foundationPage.TeaserText, 200))</p>
+                                        <p>@Html.Raw(StripHtml(foundationPage.TeaserText, 200))</p>
                                     </div>
                             }
                             <a class="btn-none stretched-link" href="@pageModel.Page.ContentLink.GetPublicUrl()"></a>

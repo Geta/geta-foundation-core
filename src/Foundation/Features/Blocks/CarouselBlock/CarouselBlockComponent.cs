@@ -17,7 +17,8 @@ namespace Foundation.Features.Blocks.CarouselBlock
 
             if (currentBlock.CarouselItems != null)
             {
-                foreach (var contentAreaItem in currentBlock.CarouselItems.FilteredItems)
+                // CMS 13: ContentArea.FilteredItems obsolete. Use Items instead.
+                foreach (var contentAreaItem in currentBlock.CarouselItems.Items)
                 {
                     var carouselItem = _contentLoader.Get<IContentData>(contentAreaItem.ContentLink);
 

@@ -18,7 +18,7 @@
 @model EPiServer.Forms.Implementation.Elements.FormContainerBlock
 
 @{
-    var formConfig = ServiceLocator.Current.GetInstance<EPiServer.Forms.Configuration.IEPiServerFormsImplementationConfig>();
+    // Forms 6.0.0: IEPiServerFormsImplementationConfig removed; formConfig was unused.
     var dataSubmissionService = ServiceLocator.Current.GetInstance<DataSubmissionService>();
     var readOnlyModeMessage = dataSubmissionService.GetReadOnlyModeMessage();
     var currentMode = ServiceLocator.Current.GetInstance<IContextModeResolver>().CurrentMode;

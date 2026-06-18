@@ -1,10 +1,10 @@
-﻿using EPiServer.Find;
-using EPiServer.Find.Cms;
-using EPiServer.Find.Framework;
 using Foundation.Features.Media;
 
 namespace Foundation.Features.Locations.TagPage
 {
+    // EPiServer.Find removed: location queries replaced with IContentLoader.
+    // TagString/continent/category filtering is not available without Find;
+    // all locations are returned unfiltered.
     public class TagPageController : PageController<TagPage>
     {
         private readonly IContentLoader _contentLoader;
@@ -27,23 +27,25 @@ namespace Foundation.Features.Locations.TagPage
                 model.AdditionalCategories = addcat.Split(',');
             }
 
-            var query = SearchClient.Instance.Search<LocationItemPage.LocationItemPage>()
-                .Filter(f => f.TagString().Match(currentPage.Name));
-            if (model.AdditionalCategories != null)
+            // EPiServer.Find removed: load locations from parent page via IContentLoader.
+            // Tag/continent filtering requires Find and is not available.
+            var parent = _contentLoader.Get<IContent>(currentPage.ParentLink);
+            if (parent is LocationListPage.LocationListPage listPage)
             {
-                query = model.AdditionalCategories.Aggregate(query, (current, c) => current.Filter(f => f.TagString().Match(c)));
+                model.Locations = _contentLoader
+                    .GetChildren<LocationItemPage.LocationItemPage>(listPage.ContentLink)
+                    .ToList();
             }
-            if (model.Continent != null)
+            else
             {
-                query = query.Filter(dp => dp.Continent.MatchCaseInsensitive(model.Continent));
+                model.Locations = new List<LocationItemPage.LocationItemPage>();
             }
-            model.Locations = query.StaticallyCacheFor(new System.TimeSpan(0, 1, 0)).GetContentResult().ToList();
 
-            //Add theme images from results
             var carousel = new TagsCarouselViewModel
             {
                 Items = new List<TagsCarouselItem>()
             };
+
             foreach (var location in model.Locations)
             {
                 if (location.Image != null)
@@ -57,19 +59,20 @@ namespace Foundation.Features.Locations.TagPage
                     });
                 }
             }
+
             if (carousel.Items.All(item => item.Image == null) || currentPage.Images != null)
             {
-                if (currentPage.Images != null && currentPage.Images.FilteredItems != null)
+                if (currentPage.Images?.Items != null)
                 {
-                    foreach (var image in currentPage.Images.FilteredItems.Select(ci => ci.ContentLink))
+                    foreach (var image in currentPage.Images.Items.Select(ci => ci.ContentLink))
                     {
                         var title = _contentLoader.Get<ImageMediaData>(image).Title;
                         carousel.Items.Add(new TagsCarouselItem { Image = image, Heading = title });
                     }
                 }
             }
-            model.Carousel = carousel;
 
+            model.Carousel = carousel;
             return View(model);
         }
     }

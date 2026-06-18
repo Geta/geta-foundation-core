@@ -9,8 +9,8 @@
 
         public override string FormatErrorMessage(string name)
         {
-            ErrorMessage = LocalizationService.Current.GetString(_name);
-            return base.FormatErrorMessage(name);
+            // .NET 10: setting ErrorMessage then calling base throws conflict; return directly.
+            return LocalizationService.Current.GetString(_name) ?? name + " is invalid.";
         }
     }
 }

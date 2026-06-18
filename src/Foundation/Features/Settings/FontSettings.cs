@@ -29,14 +29,14 @@ namespace Foundation.Features.Settings
         [Display(Name = "Global Font", GroupName = "Global", Order = 0)]
         public virtual string GlobalFontDropDown { get; set; }
 
-        [Display(Name = "Google Fonts", GroupName = "Google Fonts", Order = 10)]
+        [Display(Name = "Google Fonts", GroupName = "GoogleFonts", Order = 10)] // CMS 13: spaces not allowed in GroupName values
         [EditorDescriptor(EditorDescriptorType = typeof(CollectionEditorDescriptor<FontModel>))]
         public virtual IList<FontModel> FontFields { get; set; }
 
         [PropertyDefinitionTypePlugIn]
         public class FieldsProperty : PropertyList<FontModel> { }
 
-        [Display(Name = "Custom Fonts", GroupName = "Custom Fonts", Order = 20)]
+        [Display(Name = "Custom Fonts", GroupName = "CustomFonts", Order = 20)] // CMS 13: spaces not allowed in GroupName values
         [EditorDescriptor(EditorDescriptorType = typeof(CollectionEditorDescriptor<CustomFontModel>))]
         public virtual IList<CustomFontModel> CustomFonts { get; set; }
 

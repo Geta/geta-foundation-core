@@ -1,4 +1,4 @@
-﻿import Uri from "jsuri";
+import Uri from "jsuri";
 require("bootstrap-slider");
 
 export default class Locations {
@@ -34,7 +34,7 @@ export default class Locations {
 
     loadMapScenario() {
         this.locationMap = new Microsoft.Maps.Map('#locationMap', {
-            credentials: "Agf8opFWW3n3881904l3l0MtQNID1EaBrr7WppVZ4v38Blx9l8A8x86aLVZNRv2I",
+            credentials: "AuibkvTRtqcZejANEGiUdQy-cK0YFg3bmdujv1KtWbntImss26tSlHfs3JUVDvi2",
             disableScrollWheelZoom: true
         });
         this.locationInfobox = new Microsoft.Maps.Infobox(this.locationMap.getCenter(), { visible: false });
@@ -80,8 +80,12 @@ export default class Locations {
     initializeFilters() {
         let instance = this;
 
+        // Read initial range from data attributes set by FilterTemperaturesBlock.cshtml (?t=min,max).
+        var sliderEl = document.getElementById('slider-range');
+        var initMin = sliderEl ? parseFloat(sliderEl.getAttribute('data-temp-min') || '-20') : -20;
+        var initMax = sliderEl ? parseFloat(sliderEl.getAttribute('data-temp-max') || '40') : 40;
         $('#slider-range').bootstrapSlider(
-            { min: -20, max: 40, value: [-20, 40] }
+            { min: -20, max: 40, value: [initMin, initMax] }
         );
 
         $(document).on('slideStop', '#slider-range', () => {

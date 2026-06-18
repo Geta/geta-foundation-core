@@ -1,5 +1,6 @@
-using EPiServer.Find.Api.Querying;
-using EPiServer.Find.Api.Querying.Filters;
+using EPiServer.Commerce.Catalog.ContentTypes;
+using System.Collections.Concurrent;
+using System.Reflection;
 
 namespace Foundation.Features.Blocks.ProductFilterBlocks
 {
@@ -10,17 +11,26 @@ namespace Foundation.Features.Blocks.ProductFilterBlocks
     [ImageUrl("/icons/cms/pages/CMS-icon-page-14.png")]
     public class StringFilterBlock : FilterBaseBlock
     {
-        [CultureSpecific(true)]
+        [CultureSpecific]
         [Display(Name = "Value", Description = "The value to filter search results on", GroupName = SystemTabNames.Content, Order = 20)]
         public virtual string FieldValue { get; set; }
 
-        public override Filter GetFilter()
+        public override Func<EntryContentBase, bool> GetPredicate()
         {
-            if (!string.IsNullOrEmpty(FieldName) && !string.IsNullOrEmpty(FieldValue))
+            if (string.IsNullOrEmpty(FieldName) || string.IsNullOrEmpty(FieldValue))
+                return null;
+
+            // Cache PropertyInfo per entry type to avoid repeated reflection lookups
+            // when the predicate runs across all catalog entries.
+            var propertyCache = new ConcurrentDictionary<Type, PropertyInfo>();
+
+            return entry =>
             {
-                return new TermFilter($"{FieldName}$$string", FieldFilterValue.Create(FieldValue));
-            }
-            return null;
+                var prop = propertyCache.GetOrAdd(entry.GetType(),
+                    t => t.GetProperty(FieldName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase));
+                var val = prop?.GetValue(entry)?.ToString();
+                return val != null && val.Contains(FieldValue, StringComparison.OrdinalIgnoreCase);
+            };
         }
     }
 }

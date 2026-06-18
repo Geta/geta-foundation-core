@@ -13,7 +13,8 @@ namespace Foundation.Infrastructure.Find.Facets.Config
 
         public new void CreateDisplayMetadata(DisplayMetadataProviderContext context)
         {
-            SelectionFactoryType = typeof(EnumSelectionFactory<>).MakeGenericType(EnumType);
+            // CMS 13 removed: EnumSelectionFactory<> no longer exists in EPiServer.Shell.ObjectEditing.
+            // SelectionFactoryType = typeof(EnumSelectionFactory<>).MakeGenericType(EnumType);
             base.CreateDisplayMetadata(context);
         }
     }

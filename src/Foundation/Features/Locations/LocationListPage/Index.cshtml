@@ -31,7 +31,7 @@
                     <h3>@Html.TranslateFallback("/common/filters", "Filters")</h3>
                     @if (Model.CurrentContent.FilterArea != null)
                     {
-                        foreach (var item in Model.CurrentContent.FilterArea.FilteredItems)
+                        foreach (var item in Model.CurrentContent.FilterArea.Items)
                         {
                             var b = _contentRepository.Get<BlockData>(item.ContentLink) as IFilterBlock;
                             if (b != null)

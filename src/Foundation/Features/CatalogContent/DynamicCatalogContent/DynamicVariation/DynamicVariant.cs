@@ -13,7 +13,7 @@ namespace Foundation.Features.CatalogContent.DynamicCatalogContent.DynamicVariat
     public class DynamicVariant : GenericVariant
     {
         [BackingType(typeof(VariantGroupPropertyList))]
-        [Display(Name = "Variant Options", GroupName = "Variant Options", Order = 400)]
+        [Display(Name = "Variant Options", GroupName = "VariantOptions", Order = 400)] // CMS 13: spaces not allowed in GroupName values
         [ClientEditor(ClientEditingClass = "foundation/VariantOptionPrices")]
         [EditorDescriptor(EditorDescriptorType = typeof(CollectionEditorDescriptor<VariantOption>))]
         public virtual IList<VariantOption> VariantOptions { get; set; }

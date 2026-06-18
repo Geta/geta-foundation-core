@@ -23,6 +23,11 @@ namespace Foundation.Infrastructure.Cms
 
         void IInitializableModule.Initialize(InitializationEngine context)
         {
+            // CMS 13: InitializeSettings previously called only from ContentInstaller (first-request initializer).
+            // In CMS 13, tblContentSource is empty so the first-request approach may not load settings in time.
+            // Call InitializeSettings here so the settings cache is ready before any request hits the site.
+            var settingsService = context.Locate.Advanced.GetInstance<ISettingsService>();
+            settingsService.InitializeSettings();
         }
 
         void IInitializableModule.Uninitialize(InitializationEngine context)

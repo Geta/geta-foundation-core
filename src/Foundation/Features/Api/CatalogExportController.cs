@@ -1,4 +1,4 @@
-﻿using EPiServer.Framework.Blobs;
+﻿// CMS 13: IBlobFactory removed from EPiServer.Framework. Using MemoryStream for catalog export.
 using EPiServer.Logging;
 using Mediachase.Commerce.Catalog.ImportExport;
 using System.IO;
@@ -12,35 +12,21 @@ namespace Foundation.Features.Api
     public class CatalogExportController : ControllerBase
     {
         private readonly CatalogImportExport _importExport;
-        private readonly IBlobFactory _blobFactory;
         private readonly IContentLoader _contentLoader;
         private readonly ReferenceConverter _referenceConverter;
         internal const string DownloadRoute = "episerverapi/catalogs/";
-        private static readonly Guid _blobContainerIdentifier = Guid.Parse("119AD01E-ECD1-4781-898B-6DEC356FC8D8");
 
         private static readonly ILogger _logger = LogManager.GetLogger(typeof(CatalogExportController));
 
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="CatalogExportController"/> class.
-        /// </summary>
-        /// <param name="importExport">Catalog import export</param>
-        /// <param name="blobFactory">The blob factory.</param>
-        /// <param name="contentLoader">The content loader.</param>
-        /// <param name="referenceConverter"></param>
         public CatalogExportController(CatalogImportExport importExport,
-            IBlobFactory blobFactory,
             IContentLoader contentLoader,
             ReferenceConverter referenceConverter)
         {
             _importExport = importExport;
-            _blobFactory = blobFactory;
             _contentLoader = contentLoader;
             _referenceConverter = referenceConverter;
             _importExport.IsModelsAvailable = true;
         }
-
-
 
         // GET: CatalogExportController
         [HttpGet]
@@ -48,40 +34,26 @@ namespace Foundation.Features.Api
         [Route(DownloadRoute)]
         public ActionResult Index(string catalogName)
         {
-            var catalogs = _contentLoader.GetChildren<EPiServer.Commerce.Catalog.ContentTypes.CatalogContent >(_referenceConverter.GetRootLink());
+            var catalogs = _contentLoader.GetChildren<EPiServer.Commerce.Catalog.ContentTypes.CatalogContent>(_referenceConverter.GetRootLink());
             var catalog = catalogs.FirstOrDefault(x => x.Name.Equals(catalogName, StringComparison.OrdinalIgnoreCase));
-            if (catalog != null)
+            if (catalog == null)
             {
-                return Ok(GetFile(catalog.Name));
+                return NotFound($"{catalogName} not found");
             }
 
-            return Ok(string.Format("{0} not found", catalogName)) ; 
-            
-        }
-
-        private Task GetFile(string catalogName)
-        {
-            var container = Blob.GetContainerIdentifier(_blobContainerIdentifier);
-            var blob = _blobFactory.CreateBlob(container, ".zip");
-            using (var stream = blob.OpenWrite())
+            // CMS 13: IBlobFactory removed. Export directly to a MemoryStream and let
+            // FileStreamResult stream it to the response and dispose it afterwards.
+            var memoryStream = new MemoryStream();
+            using (var zipArchive = new ZipArchive(memoryStream, ZipArchiveMode.Create, leaveOpen: true))
             {
-                using (var zipArchive = new ZipArchive(stream, ZipArchiveMode.Create, false))
+                var entry = zipArchive.CreateEntry("catalog.xml");
+                using (var entryStream = entry.Open())
                 {
-                    var entry = zipArchive.CreateEntry("catalog.xml");
-
-                    using (var entryStream = entry.Open())
-                    {
-                        _importExport.Export(catalogName, entryStream, Path.GetTempPath());
-                    }
+                    _importExport.Export(catalog.Name, entryStream, Path.GetTempPath());
                 }
             }
-
-
-            HttpContext.Response.ContentType = "application/zip";
-            var sourceStream = blob.OpenRead();// get the source stream
-            return sourceStream.CopyToAsync(HttpContext.Response.Body);
-
-            
+            memoryStream.Position = 0;
+            return File(memoryStream, "application/zip", $"{catalog.Name}.zip");
         }
 
         //[HttpGet]

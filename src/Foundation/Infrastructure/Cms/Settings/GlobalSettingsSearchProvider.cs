@@ -1,4 +1,5 @@
-﻿using EPiServer.Cms.Shell.Search;
+﻿using EPiServer.Applications;
+using EPiServer.Cms.Shell.Search;
 using EPiServer.Shell;
 using EPiServer.Shell.Search;
 
@@ -14,26 +15,23 @@ namespace Foundation.Infrastructure.Cms.Settings
 
         public GlobalSettingsSearchProvider(
             LocalizationService localizationService,
-            ISiteDefinitionResolver siteDefinitionResolver,
-            IContentTypeRepository<ContentType> contentTypeRepository,
+            IApplicationResolver applicationResolver,
+            IContentTypeRepository contentTypeRepository, // CMS 13: IContentTypeRepository is no longer generic.
             EditUrlResolver editUrlResolver,
-            ServiceAccessor<SiteDefinition> currentSiteDefinition,
             IContentLanguageAccessor languageResolver,
             UrlResolver urlResolver,
-            TemplateResolver templateResolver,
             UIDescriptorRegistry uiDescriptorRegistry,
             IContentLoader contentLoader,
             ISettingsService settingsService)
+            // CMS 13: ContentSearchProviderBase constructor changed. siteDefinitionResolver, currentSiteDefinition, templateResolver removed.
             : base(
-                localizationService: localizationService,
-                siteDefinitionResolver: siteDefinitionResolver,
-                contentTypeRepository: contentTypeRepository,
-                editUrlResolver: editUrlResolver,
-                currentSiteDefinition: currentSiteDefinition,
-                languageResolver: languageResolver,
-                urlResolver: urlResolver,
-                templateResolver: templateResolver,
-                uiDescriptorRegistry: uiDescriptorRegistry)
+                localizationService,
+                applicationResolver,
+                contentTypeRepository,
+                editUrlResolver,
+                languageResolver,
+                urlResolver,
+                uiDescriptorRegistry)
         {
             _contentLoader = contentLoader;
             _settingsService = settingsService;

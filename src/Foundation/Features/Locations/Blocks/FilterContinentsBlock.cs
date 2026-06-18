@@ -1,8 +1,7 @@
-﻿using EPiServer.Find;
-using EPiServer.Find.Framework;
-
 namespace Foundation.Features.Locations.Blocks
 {
+    // EPiServer.Find removed: AddFilter/ApplyFilter removed. Block compiles as a CMS content type
+    // but does not perform filtering. Graph-based faceted search is a future enhancement.
     [ContentType(DisplayName = "Filter Continents Block",
         GUID = "9103a763-4c9c-431e-bc11-f2794c3b4b80",
         Description = "Continent facets for locations",
@@ -18,24 +17,5 @@ namespace Foundation.Features.Locations.Blocks
         [CultureSpecific]
         [Display(Name = "All condition text")]
         public virtual string AllConditionText { get; set; }
-
-        public ITypeSearch<LocationItemPage.LocationItemPage> AddFilter(ITypeSearch<LocationItemPage.LocationItemPage> query)
-        {
-            return query.TermsFacetFor(x => x.Continent);
-        }
-
-        public ITypeSearch<LocationItemPage.LocationItemPage> ApplyFilter(ITypeSearch<LocationItemPage.LocationItemPage> query, IQueryCollection filters)
-        {
-            var filterString = filters["c"];
-            if (!string.IsNullOrWhiteSpace(filterString))
-            {
-                var continents = filterString.ToList();
-                var continentsFilter = SearchClient.Instance.BuildFilter<LocationItemPage.LocationItemPage>();
-                continentsFilter = continents.Aggregate(continentsFilter,
-                                                        (current, name) => current.Or(x => x.Continent.Match(name)));
-                query = query.Filter(x => continentsFilter);
-            }
-            return query;
-        }
     }
 }

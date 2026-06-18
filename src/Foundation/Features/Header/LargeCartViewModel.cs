@@ -1,4 +1,3 @@
-using EPiServer.Personalization.Commerce.Tracking;
 using Foundation.Features.Checkout.ViewModels;
 using Foundation.Features.MyAccount.AddressBook;
 using Foundation.Features.NamedCarts.DefaultCart;
@@ -37,12 +36,8 @@ namespace Foundation.Features.Header
 
         public IEnumerable<string> AppliedCouponCodes { get; set; }
 
-        public IEnumerable<Recommendation> Recommendations { get; set; }
-
         public bool HasOrganization { get; set; }
 
         public string Message { get; set; }
-
-        public bool ShowRecommendations { get; set; }
     }
 }

@@ -22,7 +22,7 @@
 }
 else
 {
-    using (Html.BeginForm("Save", PageFriendlyURL, FormMethod.Post))
+    using (Html.BeginForm("Save", "CreditCard", FormMethod.Post))
     {
         @Html.AntiForgeryToken()
         <h3>

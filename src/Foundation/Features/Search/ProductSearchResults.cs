@@ -1,4 +1,4 @@
-﻿using EPiServer.Find.Statistics.Api;
+// EPiServer.Find.Statistics.Api removed: DidYouMeanResult replaced with stub from FindTypeStubs.cs.
 using Foundation.Features.CatalogContent;
 using Foundation.Infrastructure.Find.Facets;
 

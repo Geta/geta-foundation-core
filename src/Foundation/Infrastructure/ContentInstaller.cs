@@ -1,5 +1,5 @@
-﻿using EPiServer.Enterprise;
-using EPiServer.Find.Cms;
+using EPiServer.Enterprise;
+// EPiServer.Find.Cms removed: no CMS 13 version.
 using EPiServer.Logging;
 using EPiServer.Scheduler;
 using EPiServer.Security;
@@ -29,7 +29,8 @@ namespace Foundation.Infrastructure
         private readonly ISettingsService _settingsService;
         private readonly ILanguageBranchRepository _languageBranchRepository;
         private readonly IWebHostEnvironment _webHostEnvironment;
-        private readonly EventedIndexingSettings _eventedIndexingSettings;
+        // EPiServer.Find removed: EventedIndexingSettings removed (Find-only, no CMS 13 version).
+        // private readonly EventedIndexingSettings _eventedIndexingSettings;
         private readonly IServiceProvider _serviceProvider;
         private readonly IOptions<SearchOptions> _searchOptions;
         private readonly IndexBuilder _indexBuilder;
@@ -47,7 +48,8 @@ namespace Foundation.Infrastructure
             ISettingsService settingsService,
             ILanguageBranchRepository languageBranchRepository,
             IWebHostEnvironment webHostEnvironment,
-            EventedIndexingSettings eventedIndexingSettings,
+            // EPiServer.Find removed: EventedIndexingSettings parameter removed.
+            // EventedIndexingSettings eventedIndexingSettings,
             IServiceProvider serviceProvider,
             IOptions<SearchOptions> searchOptions,
             IndexBuilder indexBuilder,
@@ -65,7 +67,7 @@ namespace Foundation.Infrastructure
             _settingsService = settingsService;
             _languageBranchRepository = languageBranchRepository;
             _webHostEnvironment = webHostEnvironment;
-            _eventedIndexingSettings = eventedIndexingSettings;
+            // _eventedIndexingSettings = eventedIndexingSettings; // EPiServer.Find removed.
             _serviceProvider = serviceProvider;
             _searchOptions = searchOptions;
             _indexBuilder = indexBuilder;
@@ -93,12 +95,12 @@ namespace Foundation.Infrastructure
             var siteDefinition = new SiteDefinition
             {
                 Name = "foundation",
-                SiteUrl = new Uri(request.GetDisplayUrl()),
+                SiteUrl = new Uri("https://cms13-upgrade.opti-demo.online/"),
             };
 
             siteDefinition.Hosts.Add(new HostDefinition()
             {
-                Name = request.Host.Host,
+                Name = "cms13-upgrade.opti-demo.online",
                 Type = HostDefinitionType.Primary
             });
 
@@ -134,7 +136,7 @@ namespace Foundation.Infrastructure
 
             var searchManager = new SearchManager(Mediachase.Commerce.Core.AppContext.Current.ApplicationName, _searchOptions, _serviceProvider, _indexBuilder);
             searchManager.BuildIndex(true);
-            RunIndexJob(new Guid("8EB257F9-FF22-40EC-9958-C1C5BA8C2A53"));
+            // EPiServer.Find removed: Find index job (8EB257F9) removed. Graph indexing handled automatically.
         }
 
         private void RunIndexJob(Guid jobId)
@@ -150,11 +152,12 @@ namespace Foundation.Infrastructure
 
         private void CreateSite(Stream stream, SiteDefinition siteDefinition, ContentReference startPage)
         {
-            _eventedIndexingSettings.EventedIndexingEnabled = false;
-            _eventedIndexingSettings.ScheduledPageQueueEnabled = false;
+            // EPiServer.Find removed: EventedIndexingSettings calls removed.
+            // _eventedIndexingSettings.EventedIndexingEnabled = false;
+            // _eventedIndexingSettings.ScheduledPageQueueEnabled = false;
             ImportEpiserverContent(stream, startPage, siteDefinition);
-            _eventedIndexingSettings.EventedIndexingEnabled = true;
-            _eventedIndexingSettings.ScheduledPageQueueEnabled = true;
+            // _eventedIndexingSettings.EventedIndexingEnabled = true;
+            // _eventedIndexingSettings.ScheduledPageQueueEnabled = true;
         }
 
         public bool ImportEpiserverContent(Stream stream,
@@ -275,8 +278,9 @@ namespace Foundation.Infrastructure
                 _contentRepository.Save(catalogFolder, EPiServer.DataAccess.SaveAction.Publish, EPiServer.Security.AccessLevel.NoAccess);
             }
 
-            _eventedIndexingSettings.EventedIndexingEnabled = false;
-            _eventedIndexingSettings.ScheduledPageQueueEnabled = false;
+            // EPiServer.Find removed: EventedIndexingSettings calls removed.
+            // _eventedIndexingSettings.EventedIndexingEnabled = false;
+            // _eventedIndexingSettings.ScheduledPageQueueEnabled = false;
             ImportEpiserverContent(assests.OpenRead(), catalogFolder.ContentLink);
             try
             {
@@ -291,8 +295,9 @@ namespace Foundation.Infrastructure
                 LogManager.GetLogger().Error(exception.Message, exception);
             }
 
-            _eventedIndexingSettings.EventedIndexingEnabled = true;
-            _eventedIndexingSettings.ScheduledPageQueueEnabled = true;
+            // EPiServer.Find removed:
+            // _eventedIndexingSettings.EventedIndexingEnabled = true;
+            // _eventedIndexingSettings.ScheduledPageQueueEnabled = true;
         }
     }
 

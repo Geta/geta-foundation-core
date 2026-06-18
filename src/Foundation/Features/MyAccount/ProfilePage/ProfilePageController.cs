@@ -41,13 +41,13 @@ namespace Foundation.Features.MyAccount.ProfilePage
                 Orders = GetOrderHistoryViewModels(),
                 Addresses = GetAddressViewModels(),
                 SiteUser = await CustomerService.GetSiteUserAsync(User.Identity.Name),
-                CustomerContact = new FoundationContact(CustomerService.GetCurrentContact().Contact),
+                CustomerContact = CustomerService.GetCurrentContact() is { } c ? new FoundationContact(c.Contact) : null,
                 OrderDetailsPageUrl = UrlResolver.Current.GetUrl(_settingsService.GetSiteSettings<ReferencePageSettings>()?.OrderDetailsPage ?? ContentReference.StartPage),
                 ResetPasswordPage = UrlResolver.Current.GetUrl(_settingsService.GetSiteSettings<ReferencePageSettings>()?.ResetPasswordPage ?? ContentReference.StartPage),
                 AddressBookPage = UrlResolver.Current.GetUrl(_settingsService.GetSiteSettings<ReferencePageSettings>()?.AddressBookPage ?? ContentReference.StartPage)
             };
 
-            return View(viewModel);
+            return View("Index", viewModel);
         }
 
         [HttpPost]

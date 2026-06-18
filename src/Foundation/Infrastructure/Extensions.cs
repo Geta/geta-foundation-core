@@ -1,6 +1,7 @@
 ﻿using EPiServer.Commerce.Catalog.Linking;
-using EPiServer.Find;
-//using EPiServer.Find.Commerce;
+// EPiServer.Find removed: FilterBuilder/ITypeSearch extension methods excluded. Phase 4 will restore.
+// using EPiServer.Find;
+// using EPiServer.Find.Commerce;
 using Foundation.Features.CatalogContent.Product;
 using Foundation.Features.CatalogContent.Variation;
 using Foundation.Features.Folder;
@@ -11,7 +12,8 @@ using Foundation.Features.MyOrganization;
 using Foundation.Features.Search;
 using Foundation.Infrastructure.Commerce.Customer;
 using Foundation.Infrastructure.Commerce.Customer.Services;
-using Foundation.Infrastructure.Find;
+// Foundation.Infrastructure.Find excluded: Find-dependent types.
+// using Foundation.Infrastructure.Find;
 
 namespace Foundation.Infrastructure
 {
@@ -23,23 +25,10 @@ namespace Foundation.Infrastructure
         private static readonly Lazy<IRelationRepository> RelationRepository =
           new Lazy<IRelationRepository>(() => ServiceLocator.Current.GetInstance<IRelationRepository>());
 
-        public static FilterBuilder<T> FilterOutline<T>(this FilterBuilder<T> filterBuilder,
-           IEnumerable<string> value)
-        {
-            var outlineFilterBuilder = new FilterBuilder<ContentData>(filterBuilder.Client);
-            outlineFilterBuilder = outlineFilterBuilder.And(x => !x.MatchTypeHierarchy(typeof(EntryContentBase)));
-            outlineFilterBuilder = value.Aggregate(outlineFilterBuilder,
-                (current, filter) => current.Or(x => ((EntryContentBase)x).Outline().PrefixCaseInsensitive(filter)));
-            return filterBuilder.And(x => outlineFilterBuilder);
-        }
-
-        public static ITypeSearch<T> FilterOutline<T>(this ITypeSearch<T> search, IEnumerable<string> value)
-        {
-            var filterBuilder = new FilterBuilder<T>(search.Client)
-                .FilterOutline(value);
-
-            return search.Filter(x => filterBuilder);
-        }
+        // EPiServer.Find removed: FilterOutline extension methods used Find FilterBuilder/ITypeSearch.
+        // Phase 4 will restore with Graph-based implementation.
+        // public static FilterBuilder<T> FilterOutline<T>(...) { ... }
+        // public static ITypeSearch<T> FilterOutline<T>(...) { ... }
 
         public static List<string> AvailableSizes(this GenericProduct genericProduct)
         {
@@ -97,7 +86,7 @@ namespace Foundation.Infrastructure
                    address.CountryRegion.Region == compareAddressViewModel.CountryRegion.Region;
         }
 
-        public static List<string> TagString(this LocationItemPage locationList) => new List<string>();// locationList.Categories.Select(cai => _contentRepository.Value.Get<StandardCategory>(cai).Name).ToList();
+        public static List<string> TagString(this LocationItemPage locationList) => new List<string>();
 
         public static ContactViewModel GetCurrentContactViewModel(this ICustomerService customerService)
         {

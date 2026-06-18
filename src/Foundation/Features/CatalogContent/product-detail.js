@@ -362,19 +362,8 @@ export default class ProductDetail {
         });
     }
 
-    //need to rewrite in javascript
     closeQuickViewModal() {
-        document.querySelector(".close").addEventListener("click", function () {
-            console.log("inside close click event");
-
-            //$(document).ready(function ($) {
-            //    //event.preventDefault();
-            //    jQuery.noConflict();
-            //    $('#quickView').modal('hide');
-
-            //});
-        });
-        
+        // Bootstrap 5 handles close via data-bs-dismiss="modal" on the close button.
     }
 
 

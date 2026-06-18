@@ -3,7 +3,6 @@ using Foundation.Features.MyAccount.AddressBook;
 using Foundation.Infrastructure.Cms;
 using Foundation.Infrastructure.Cms.Users;
 using Foundation.Infrastructure.Commerce.Customer.Services;
-using Foundation.Infrastructure.Personalization;
 using System.Web;
 
 namespace Foundation.Features.Api
@@ -16,17 +15,13 @@ namespace Foundation.Features.Api
         private readonly ICustomerService _customerService;
         //private readonly ICampaignService _campaignService;
         private readonly IUrlResolver _urlResolver;
-        private readonly ICmsTrackingService _cmsTrackingService;
-        private readonly IHttpContextAccessor _httpContextAccessor;
 
         public PublicApiController(LocalizationService localizationService,
             IContentLoader contentLoader,
             IAddressBookService addressBookService,
             ICustomerService customerService,
             //ICampaignService campaignService,
-            IUrlResolver urlResolver,
-            ICmsTrackingService cmsTrackingService,
-            IHttpContextAccessor httpContextAccessor)
+            IUrlResolver urlResolver)
         {
             _localizationService = localizationService;
             _contentLoader = contentLoader;
@@ -34,8 +29,6 @@ namespace Foundation.Features.Api
             _addressBookService = addressBookService;
             //_campaignService = campaignService;
             _urlResolver = urlResolver;
-            _cmsTrackingService = cmsTrackingService;
-            _httpContextAccessor = httpContextAccessor;
         }
 
         [HttpGet]
@@ -233,26 +226,6 @@ namespace Foundation.Features.Api
 
         //    return View(viewModel);
         //}
-
-        [HttpPost]
-        public ActionResult TrackHeroBlock(string blockId, string blockName, string pageName)
-        {
-            _cmsTrackingService.HeroBlockClicked(_httpContextAccessor.HttpContext, blockId, blockName, pageName);
-            return new ContentResult()
-            {
-                Content = blockName
-            };
-        }
-
-        [HttpPost]
-        public ActionResult TrackVideoBlock(string blockId, string blockName, string pageName)
-        {
-            _cmsTrackingService.VideoBlockViewed(_httpContextAccessor.HttpContext, blockId, blockName, pageName);
-            return new ContentResult()
-            {
-                Content = blockName
-            };
-        }
 
         private void AddErrors(IEnumerable<string> errors)
         {

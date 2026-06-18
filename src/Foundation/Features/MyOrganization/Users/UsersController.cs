@@ -75,7 +75,7 @@ namespace Foundation.Features.MyOrganization.Users
                 Organizations = organization?.SubOrganizations ?? new List<FoundationOrganization>()
             };
 
-            if (currentOrganization.SubOrganizations.Any())
+            if (currentOrganization?.SubOrganizations?.Any() == true)
             {
                 foreach (var subOrg in currentOrganization.SubOrganizations)
                 {

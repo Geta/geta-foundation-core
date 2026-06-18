@@ -1,4 +1,4 @@
-﻿import axios from "axios";
+import axios from "axios";
 require('webpack-jquery-ui');
 
 export default class Stores {
@@ -85,7 +85,7 @@ export default class Stores {
 
     loadMapScenario() {
         this.storeMap = new Microsoft.Maps.Map('#storeMap', {
-            credentials: "Agf8opFWW3n3881904l3l0MtQNID1EaBrr7WppVZ4v38Blx9l8A8x86aLVZNRv2I" 
+            credentials: "AuibkvTRtqcZejANEGiUdQy-cK0YFg3bmdujv1KtWbntImss26tSlHfs3JUVDvi2" 
         });
         this.storeInfobox = new Microsoft.Maps.Infobox(this.storeMap.getCenter(), { visible: false });
         this.storeInfobox.setMap(this.storeMap);

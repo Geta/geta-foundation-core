@@ -1,4 +1,3 @@
-using EPiServer.Personalization.Commerce.Tracking;
 using Foundation.Features.CatalogContent.Variation;
 
 namespace Foundation.Features.CatalogContent.Product
@@ -13,8 +12,6 @@ namespace Foundation.Features.CatalogContent.Product
         {
         }
 
-        //public ReviewsViewModel Reviews { get; set; }
-        public IEnumerable<Recommendation> AlternativeProducts { get; set; }
-        public IEnumerable<Recommendation> CrossSellProducts { get; set; }
+        // AlternativeProducts and CrossSellProducts removed: EPiServer.Personalization.Commerce has no CMS 13 version.
     }
 }

@@ -34,7 +34,8 @@ namespace Foundation.Features.Blocks.CarouselBlock
                 var model = new CarouselBlockViewModel(carouselBlock);
                 if (carouselBlock.CarouselItems != null)
                 {
-                    foreach (var contentAreaItem in carouselBlock.CarouselItems.FilteredItems)
+                    // CMS 13: ContentArea.FilteredItems obsolete. Use Items instead.
+                    foreach (var contentAreaItem in carouselBlock.CarouselItems.Items)
                     {
                         var carouselItem = _contentLoader.Get<IContentData>(contentAreaItem.ContentLink);
                         if (carouselItem is not ImageMediaData && carouselItem is not ImageData && carouselItem is not HeroBlock.HeroBlock && carouselItem is not ContainerBlock.ContainerBlock)

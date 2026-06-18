@@ -23,6 +23,12 @@ namespace Foundation.Infrastructure.Cms.Extensions
 
         public static bool IsNullOrEmpty(this ContentReference contentReference) => ContentReference.IsNullOrEmpty(contentReference);
 
+        /// <summary>
+        /// CMS 13: EPiServer.AddOns.Helpers removed. GetPublicUrl replicated via UrlResolver.
+        /// </summary>
+        public static string GetPublicUrl(this ContentReference contentReference) =>
+            ContentReference.IsNullOrEmpty(contentReference) ? string.Empty : UrlResolver.Value.GetUrl(contentReference);
+
         public static IContent Get<TContent>(this ContentReference contentLink) where TContent : IContent => ContentLoader.Value.Get<TContent>(contentLink);
 
         public static IContent Get<TContent>(this ContentReference contentLink, string language) where TContent : IContent => ContentLoader.Value.Get<TContent>(contentLink, CultureInfo.GetCultureInfo(language));

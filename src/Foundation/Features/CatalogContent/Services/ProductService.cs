@@ -1,7 +1,6 @@
 using EPiServer.Commerce.Catalog.Linking;
 using EPiServer.Filters;
 using EPiServer.Globalization;
-using EPiServer.Personalization.Commerce.Tracking;
 using Foundation.Features.CatalogContent.Product;
 using Foundation.Features.CatalogContent.Variation;
 using Foundation.Features.Stores;
@@ -15,7 +14,7 @@ namespace Foundation.Features.CatalogContent.Services
         IEnumerable<ProductTileViewModel> GetProductTileViewModels(IEnumerable<ContentReference> entryLinks);
         string GetSiblingVariantCodeBySize(string siblingCode, string size);
         IEnumerable<VariationContent> GetVariants(ProductContent currentContent);
-        IEnumerable<RecommendedProductTileViewModel> GetRecommendedProductTileViewModels(IEnumerable<Recommendation> recommendations);
+        // GetRecommendedProductTileViewModels removed: EPiServer.Personalization.Commerce has no CMS 13 version.
     }
 
     public class ProductService : IProductService
@@ -123,36 +122,6 @@ namespace Foundation.Features.CatalogContent.Services
             }
 
             throw new ArgumentException("BundleContent is not supported", nameof(entry));
-        }
-
-        public IEnumerable<RecommendedProductTileViewModel> GetRecommendedProductTileViewModels(IEnumerable<Recommendation> recommendations)
-        {
-            try
-            {
-                var returnValue = new List<RecommendedProductTileViewModel>();
-                var language = _languageService.GetCurrentLanguage();
-                var currentMarket = _currentMarket.GetCurrentMarket();
-
-                foreach (var recommendation in recommendations)
-                {
-                    try
-                    {
-                        returnValue.Add(
-                            new RecommendedProductTileViewModel(recommendation.RecommendationId,
-                            _contentLoader.Get<EntryContentBase>(recommendation.ContentLink, language).GetProductTileViewModel(currentMarket, currentMarket.DefaultCurrency))
-                        );
-                    }
-                    catch
-                    {
-                    }
-                }
-
-                return returnValue;
-            }
-            catch
-            {
-                return new List<RecommendedProductTileViewModel>();
-            }
         }
 
         private IEnumerable<VariationContent> GetAvailableVariants(IEnumerable<ContentReference> contentLinks)

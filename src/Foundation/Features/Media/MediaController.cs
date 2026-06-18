@@ -64,28 +64,7 @@ namespace Foundation.Features.Media
                     }
 
                     return await Task.FromResult(View("~/Features/Media/ImageMedia.cshtml", imageViewModel));
-                case FoundationPdfFile pdfFile:
-                    var pdfViewModel = new FoundationPdfFileViewModel
-                    {
-                        Name = pdfFile.Name,
-                        Title = pdfFile.Title,
-                        Description = pdfFile.Description,
-                        Height = pdfFile.Height,
-                        DisplayAsPreview = pdfFile.DisplayAsPreview,
-                        ShowDescription = pdfFile.ShowDescription,
-                        ShowIcon = pdfFile.ShowIcon
-                    };
-
-                    if (_contextModeResolver.CurrentMode == ContextMode.Edit)
-                    {
-                        pdfViewModel.PdfLink = _urlResolver.GetUrl(pdfFile.ContentLink, null, new VirtualPathArguments { ContextMode = ContextMode.Default });
-                    }
-                    else
-                    {
-                        pdfViewModel.PdfLink = _urlResolver.GetUrl(pdfFile.ContentLink);
-                    }
-
-                    return await Task.FromResult(View("~/Features/Media/PdfFile.cshtml", pdfViewModel));
+                // FoundationPdfFile case removed: EPiServer.PdfPreview has no CMS 13 version.
                 case StandardFile standardFile:
                     var standardFileViewModel = new StandardFileViewModel
                     {
